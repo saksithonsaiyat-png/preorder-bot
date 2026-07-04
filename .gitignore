@@ -1,0 +1,4 @@
+node_modules/
+checkorder.db
+*.log
+.gemini/
