@@ -515,72 +515,83 @@ app.get('/api/check-queue', (req, res) => {
 
     logger.info(`[API] Checking queue for: ${username}`);
     
-    // Query local database for account status and credentials
+    // First, verify if the user exists in the accounts table
     db.get("SELECT * FROM accounts WHERE username = ?", [username], (err, account) => {
         if (err) {
             logger.error(err.message);
             return res.status(500).json({ success: false, message: 'Database error' });
         }
 
-        if (account) {
-            broadcastLog(username, 'info', `คิวถูกร้องขอตรวจสอบสถานะปัจจุบัน: คิวที่ #${account.queue_position} (${account.queue_status})`);
-            updateQueueFromTarget(account);
-
-            return res.json({
-                success: true,
-                data: {
-                    username: account.username,
-                    queue_position: account.queue_position,
-                    queue_status: account.queue_status,
-                    last_updated: account.last_updated
-                }
-            });
-        } else {
+        if (!account) {
             broadcastLog(username, 'warn', `ไม่พบบัญชีผู้ใช้ในการตรวจสอบคิวสไนเปอร์`);
             return res.status(404).json({ success: false, message: 'Account not found' });
         }
+
+        // Query all orders belonging to this user from the orders table
+        db.all("SELECT * FROM orders WHERE username = ? ORDER BY last_updated DESC", [username], (err, orders) => {
+            if (err) {
+                logger.error(err.message);
+                return res.status(500).json({ success: false, message: 'Database error' });
+            }
+
+            broadcastLog(username, 'info', `คิวถูกร้องขอตรวจสอบสถานะปัจจุบัน: ดึงข้อมูลพรีออเดอร์ทั้งหมด ${orders.length} รายการ`);
+            
+            // Asynchronously trigger target update simulation
+            updateQueueFromTarget(username);
+
+            return res.json({
+                success: true,
+                data: orders // Array of all preorder items
+            });
+        });
     });
 });
 
-async function updateQueueFromTarget(account) {
-    const username = account.username;
+async function updateQueueFromTarget(username) {
     broadcastLog(username, 'info', `กำลังส่งสคริปต์บอทตรวจสอบเซสชันกับเว็บไซต์ต้นทาง (thewestern.rdcw.xyz)...`);
 
-    try {
-        setTimeout(() => {
-            const now = new Date().toISOString();
-            let nextStatus = account.queue_status;
-            let nextPos = account.queue_position;
-            
-            if (account.queue_status === 'Pending') {
-                nextStatus = 'Processing';
-                nextPos = Math.max(1, account.queue_position - 2);
-            } else if (account.queue_status === 'Processing') {
-                if (account.queue_position <= 2) {
-                    nextStatus = 'Completed';
-                    nextPos = 0;
-                } else {
-                    nextPos = account.queue_position - 1;
-                }
-            }
+    db.all("SELECT * FROM orders WHERE username = ? AND queue_status IN ('Pending', 'Processing')", [username], (err, orders) => {
+        if (err || !orders || orders.length === 0) return;
 
-            db.run(
-                "UPDATE accounts SET queue_status = ?, queue_position = ?, last_updated = ? WHERE username = ?",
-                [nextStatus, nextPos, now, username],
-                (err) => {
-                    if (err) {
-                        broadcastLog(username, 'error', `ไม่สามารถเซฟข้อมูลคิวอัปเดตลงฐานข้อมูลได้: ${err.message}`);
+        orders.forEach(order => {
+            setTimeout(() => {
+                const now = new Date().toISOString();
+                let nextStatus = order.queue_status;
+                let nextPos = order.queue_position;
+                let waitTime = order.estimated_wait_time;
+                let notes = order.notes;
+
+                if (order.queue_status === 'Pending') {
+                    nextStatus = 'Processing';
+                    nextPos = Math.max(1, order.queue_position - 2);
+                    waitTime = `ประมาณ ${nextPos * 2} นาที`;
+                    notes = 'บอทกำลังรันสคริปต์ทำคำสั่งซื้อกับระบบหลังบ้านหลักเพื่อล็อกสินค้า...';
+                } else if (order.queue_status === 'Processing') {
+                    if (order.queue_position <= 2) {
+                        nextStatus = 'Completed';
+                        nextPos = 0;
+                        waitTime = 'จัดส่งสำเร็จแล้ว';
+                        notes = 'จัดส่งพัสดุเรียบร้อยทางไปรษณีย์ด่วนพิเศษ (EMS) หมายเลขติดตามพัสดุ: TH' + Math.floor(Math.random() * 900000000 + 100000000) + 'TH';
                     } else {
-                        broadcastLog(username, 'success', `บอทอัปเดตคิวสำเร็จ: สถานะย้ายไปเป็น ${nextStatus} (คิวลำดับ #${nextPos})`);
+                        nextPos = order.queue_position - 1;
+                        waitTime = `ประมาณ ${nextPos * 2} นาที`;
                     }
                 }
-            );
 
-        }, 3000);
-        
-    } catch (err) {
-        broadcastLog(username, 'error', `บอทไม่สามารถเข้าสู่ระบบต้นทางได้: ${err.message}. กำลังพยายามทดสอบพร็อกซีสำรองเพื่อเชื่อมต่อใหม่...`);
-    }
+                db.run(
+                    "UPDATE orders SET queue_status = ?, queue_position = ?, estimated_wait_time = ?, notes = ?, last_updated = ? WHERE id = ?",
+                    [nextStatus, nextPos, waitTime, notes, now, order.id],
+                    (err) => {
+                        if (err) {
+                            broadcastLog(username, 'error', `ไม่สามารถเซฟข้อมูลคิวอัปเดตของสินค้า ${order.product_name} ลงฐานข้อมูลได้: ${err.message}`);
+                        } else {
+                            broadcastLog(username, 'success', `บอทอัปเดตคิวสินค้า ${order.product_name} สำเร็จ: สถานะย้ายไปเป็น ${nextStatus} (คิวลำดับ #${nextPos})`);
+                        }
+                    }
+                );
+            }, 3000);
+        });
+    });
 }
 
 app.post('/api/admin/import-accounts', (req, res) => {

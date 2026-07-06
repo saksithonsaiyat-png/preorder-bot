@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="th" class="h-full">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,9 +7,7 @@
     <!-- Google Fonts: IBM Plex Sans Thai & Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -30,12 +27,6 @@
                         secondary: {
                             DEFAULT: '#7845DE',
                             foreground: '#ffffff',
-                        },
-                        background: '#09090b',
-                        card: {
-                            DEFAULT: '#18181b',
-                            hover: '#202024',
-                            border: '#27272a',
                         }
                     },
                     backgroundImage: {
@@ -50,124 +41,113 @@
     <style>
         body {
             font-family: 'IBM Plex Sans Thai', 'Inter', sans-serif;
-            background-color: #030014;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
-
         /* Custom scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
         }
-
         ::-webkit-scrollbar-track {
-            background: #030014;
+            background: transparent;
         }
-
         ::-webkit-scrollbar-thumb {
-            background: #1f1f2e;
+            background: #cbd5e1;
             border-radius: 4px;
         }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #2b2b3d;
+        .dark ::-webkit-scrollbar-thumb {
+            background: #1f1f2e;
         }
     </style>
 </head>
+<body :class="darkMode ? 'dark bg-[#030014] text-zinc-100' : 'bg-slate-50 text-slate-800'" class="min-h-screen flex flex-col antialiased relative overflow-x-hidden" x-data="queueChecker()">
 
-<body class="text-zinc-100 min-h-screen flex flex-col antialiased relative overflow-x-hidden" x-data="queueChecker()">
-
-    <!-- Animated Star Canvas Background -->
-    <canvas id="background" class="w-full h-full absolute inset-0 -z-20 opacity-40 pointer-events-none"></canvas>
+    <!-- Animated Star Canvas Background (only visible in Dark Mode) -->
+    <canvas id="background" x-show="darkMode" class="w-full h-full absolute inset-0 -z-20 opacity-40 pointer-events-none"></canvas>
 
     <!-- Radial Glow Ellipses -->
-    <div
-        class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-500/10 blur-[150px] -z-10 pointer-events-none">
-    </div>
-    <div
-        class="absolute top-[30%] right-[-10%] w-[60%] h-[60%] rounded-full bg-purple-500/10 blur-[180px] -z-10 pointer-events-none">
-    </div>
+    <div x-show="darkMode" class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-500/10 blur-[150px] -z-10 pointer-events-none"></div>
+    <div x-show="darkMode" class="absolute top-[30%] right-[-10%] w-[60%] h-[60%] rounded-full bg-purple-500/10 blur-[180px] -z-10 pointer-events-none"></div>
 
     <!-- Navbar -->
-    <header class="bg-[#030014]/85 border-b border-white/5 sticky top-0 z-40 backdrop-blur-md">
+    <header class="border-b transition-colors duration-300" :class="darkMode ? 'bg-[#030014]/85 border-white/5 sticky top-0 z-40 backdrop-blur-md' : 'bg-white/90 border-slate-200 sticky top-0 z-40 backdrop-blur-md'">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-3">
-                <span
-                    class="text-2xl font-extrabold tracking-wider bg-clip-text text-transparent bg-brand-gradient">checkorder</span>
-                <span
-                    class="text-xs bg-primary/20 text-primary border border-primary/30 font-semibold px-2.5 py-0.5 rounded-full">Queue
-                    Checker</span>
+                <span class="text-2xl font-extrabold tracking-wider bg-clip-text text-transparent bg-brand-gradient">checkorder</span>
+                <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full" :class="darkMode ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-blue-50 text-blue-600 border border-blue-200'">Queue Checker</span>
             </div>
+            
             <div class="flex items-center space-x-4">
-                <a href="https://lin.ee/jKRpFHw" target="_blank"
-                    class="text-xs font-semibold text-zinc-400 hover:text-white transition-colors flex items-center gap-1">
-                    <span>ติดต่อแอดมิน</span>
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                <!-- Theme Switcher Button -->
+                <button @click="toggleTheme()" class="p-2 rounded-lg transition-colors border" :class="darkMode ? 'border-zinc-800 hover:bg-zinc-800 text-zinc-300' : 'border-slate-200 hover:bg-slate-100 text-slate-600'" aria-label="Toggle Theme">
+                    <!-- Sun Icon (shown in dark mode) -->
+                    <svg x-show="darkMode" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
                     </svg>
+                    <!-- Moon Icon (shown in light mode) -->
+                    <svg x-show="!darkMode" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                </button>
+
+                <a href="/admin" target="_blank" class="text-xs font-semibold hover:underline transition-colors" :class="darkMode ? 'text-zinc-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'">
+                    ระบบหลังบ้านแอดมิน
                 </a>
             </div>
         </div>
     </header>
 
     <!-- Main Content -->
-    <main class="flex-grow max-w-4xl mx-auto w-full px-4 sm:px-6 py-12 flex flex-col justify-center items-center">
+    <main class="flex-grow max-w-4xl mx-auto w-full px-4 sm:px-6 py-12 flex flex-col items-center">
 
         <!-- Header Hero -->
         <div class="text-center space-y-4 mb-10">
-            <h1
-                class="text-4xl sm:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-brand-gradient">
-                ตรวจสอบคิวจองพรีออเดอร์
+            <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-brand-gradient">
+                ตรวจสอบคิวจองสินค้าพรีออเดอร์
             </h1>
-            <p class="text-zinc-400 max-w-md mx-auto text-sm sm:text-base font-light">
-                ระบบเชื่อมต่อบอทหลังบ้านเพื่อตรวจสอบคิวจากเว็บไซต์หลักแบบสดเรียลไทม์
+            <p class="max-w-md mx-auto text-sm sm:text-base font-light transition-colors duration-300" :class="darkMode ? 'text-zinc-400' : 'text-slate-600'">
+                กรอกชื่อบัญชีของคุณเพื่อตรวจสอบความคืบหน้าของสินค้าทุกรายการแบบเรียลไทม์
             </p>
         </div>
 
-        <!-- Central Checker Box -->
-        <div
-            class="bg-card border border-card-border rounded-xl shadow-2xl p-6 sm:p-8 w-full max-w-xl mx-auto transition-all duration-300">
+        <!-- Central Search Box -->
+        <div class="border rounded-xl shadow-2xl p-6 sm:p-8 w-full max-w-xl mx-auto transition-all duration-300" :class="darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-slate-200'">
             <form @submit.prevent="checkQueue()" class="space-y-5">
                 <div>
-                    <label for="username-input"
-                        class="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2.5">
-                        ชื่อผู้ใช้งาน (Username / Email ของบัญชีที่ลงทะเบียน)
+                    <label for="username-input" class="block text-xs font-bold uppercase tracking-wider mb-2.5" :class="darkMode ? 'text-zinc-400' : 'text-slate-500'">
+                        ชื่อผู้ใช้งาน (Username / Email ของบัญชี)
                     </label>
                     <div class="relative rounded-lg shadow-sm">
-                        <div
-                            class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
                         </div>
                         <input type="text" id="username-input" x-model="username"
                             placeholder="ตัวอย่าง: customer_test_1@example.com"
-                            class="block w-full pl-11 pr-4 py-3.5 bg-black/40 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all text-base"
+                            class="block w-full pl-11 pr-4 py-3.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all text-base border"
+                            :class="darkMode ? 'bg-black/40 border-zinc-700 text-white placeholder-zinc-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'"
                             required>
                     </div>
                 </div>
 
                 <div class="flex items-center justify-between pt-2">
-                    <div class="text-[11px] text-zinc-500">
-                        บัญชีทดสอบคิว: <button type="button" @click="username = 'customer_test_1@example.com'"
-                            class="underline hover:text-zinc-300">Test-1</button>
-                        | <button type="button" @click="username = 'customer_test_2@example.com'"
-                            class="underline hover:text-zinc-300">Test-2</button>
+                    <div class="text-[11px] font-medium" :class="darkMode ? 'text-zinc-500' : 'text-slate-400'">
+                        บัญชีทดสอบ: 
+                        <button type="button" @click="username = 'customer_test_1@example.com'" class="underline hover:text-primary transition-colors">Test-1</button>
+                        | 
+                        <button type="button" @click="username = 'customer_test_2@example.com'" class="underline hover:text-primary transition-colors">Test-2</button>
                     </div>
 
                     <button type="submit"
-                        class="bg-brand-900 bg-primary hover:opacity-95 text-white font-medium py-3 px-6 rounded-lg transition-all flex items-center space-x-2 text-sm shadow-md active:scale-[0.98] duration-150"
+                        class="bg-primary hover:opacity-95 text-white font-medium py-3 px-6 rounded-lg transition-all flex items-center space-x-2 text-sm shadow-md active:scale-[0.98] duration-150"
                         :disabled="loading">
-                        <span x-show="!loading">ตรวจสอบสถานะคิว</span>
+                        <span x-show="!loading">ตรวจสอบคิวของฉัน</span>
                         <span x-show="loading" class="flex items-center gap-2">
                             <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                    stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor"
-                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                                </path>
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            กำลังดึงข้อมูล...
+                            กำลังค้นหาข้อมูล...
                         </span>
                     </button>
                 </div>
@@ -177,139 +157,151 @@
         <!-- Result Container -->
         <div x-show="searched" x-transition:enter="transition ease-out duration-300"
             x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
-            class="w-full max-w-xl mx-auto mt-8">
-            <!-- Queue Details Card -->
-            <template x-if="queueResult">
-                <div class="bg-card border border-card-border rounded-xl shadow-2xl overflow-hidden">
-                    <div
-                        class="border-b border-card-border bg-white/[0.02] px-6 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <div>
-                            <span
-                                class="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider block">ผู้ฝากสไนเปอร์คิว</span>
-                            <span class="text-base font-bold text-white mt-1 break-all"
-                                x-text="queueResult.username"></span>
+            class="w-full max-w-3xl mx-auto mt-8 space-y-6">
+
+            <!-- Title: Found Items -->
+            <div x-show="queueResults && queueResults.length > 0" class="flex items-center justify-between border-b pb-3" :class="darkMode ? 'border-zinc-800' : 'border-slate-200'">
+                <h2 class="text-lg font-bold">รายการสินค้าพรีออเดอร์ของคุณ (<span x-text="queueResults.length"></span> รายการ)</h2>
+                <span class="text-xs font-light" :class="darkMode ? 'text-zinc-500' : 'text-slate-400'">ข้อมูลล่าสุดดึงจากระบบอัตโนมัติ</span>
+            </div>
+
+            <!-- List of Queue Items -->
+            <template x-for="order in queueResults" :key="order.id">
+                <div class="border rounded-xl shadow-lg overflow-hidden transition-all duration-300" :class="darkMode ? 'bg-zinc-900 border-zinc-800 hover:bg-zinc-900/80' : 'bg-white border-slate-200 hover:shadow-xl'">
+                    <!-- Header of Product Item -->
+                    <div class="px-6 py-4 border-b flex flex-col md:flex-row md:items-center justify-between gap-4" :class="darkMode ? 'border-zinc-800 bg-white/[0.01]' : 'border-slate-100 bg-slate-50/[0.3]'">
+                        <div class="flex items-center space-x-4">
+                            <!-- Product Image -->
+                            <img :src="order.product_image || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=100&q=80'" @error="$event.target.src = 'https://placehold.co/100x100/4A7BF8/FFF?text=Product'" alt="Product Image" class="w-14 h-14 object-cover rounded-lg border" :class="darkMode ? 'border-zinc-800' : 'border-slate-200'">
+                            <div>
+                                <span class="text-xs font-bold uppercase tracking-wider" :class="darkMode ? 'text-primary' : 'text-blue-600'">Preorder Item</span>
+                                <h3 class="text-base font-bold" :class="darkMode ? 'text-white' : 'text-slate-900'" x-text="order.product_name"></h3>
+                            </div>
                         </div>
-                        <div class="text-left sm:text-right">
-                            <span
-                                class="text-[10px] text-zinc-500 block uppercase tracking-wider">อัปเดตล่าสุดจากบอท</span>
-                            <span class="text-xs font-semibold text-zinc-300"
-                                x-text="formatDate(queueResult.last_updated)"></span>
+                        <div class="text-left md:text-right text-xs">
+                            <span class="block" :class="darkMode ? 'text-zinc-500' : 'text-slate-400'">อัปเดตล่าสุด</span>
+                            <span class="font-semibold" :class="darkMode ? 'text-zinc-300' : 'text-slate-600'" x-text="formatDate(order.last_updated)"></span>
                         </div>
                     </div>
 
+                    <!-- Details Content -->
                     <div class="p-6 space-y-6">
-                        <!-- Queue Number Status -->
-                        <div
-                            class="grid grid-cols-2 gap-4 text-center bg-black/30 border border-zinc-800 rounded-lg p-4">
+                        <!-- Queue Status Metrics -->
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center rounded-xl p-4 border" :class="darkMode ? 'bg-black/30 border-zinc-800' : 'bg-slate-50 border-slate-100'">
                             <div>
-                                <span
-                                    class="text-[10px] text-zinc-500 block uppercase tracking-wider mb-1">ตำแหน่งคิวพรีออเดอร์</span>
-                                <span class="text-3xl font-extrabold text-primary"
-                                    x-text="queueResult.queue_position > 0 ? '#' + queueResult.queue_position : '-'"></span>
+                                <span class="text-[10px] block uppercase tracking-wider mb-1" :class="darkMode ? 'text-zinc-500' : 'text-slate-400'">ลำดับคิวปัจจุบัน</span>
+                                <span class="text-2xl font-extrabold" :class="order.queue_position > 0 ? 'text-primary' : 'text-zinc-400'" x-text="order.queue_position > 0 ? '#' + order.queue_position : '-'"></span>
                             </div>
                             <div>
-                                <span
-                                    class="text-[10px] text-zinc-500 block uppercase tracking-wider mb-1">สถานะคิว</span>
-                                <div class="mt-1 inline-flex items-center px-3 py-1 rounded-full text-xs font-bold"
-                                    :class="{
-                                         'bg-blue-500/10 text-blue-400 border border-blue-500/20': queueResult.queue_status === 'Processing',
-                                         'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20': queueResult.queue_status === 'Completed',
-                                         'bg-amber-500/10 text-amber-400 border border-amber-500/20': queueResult.queue_status === 'Pending'
-                                     }">
-                                    <span class="w-1.5 h-1.5 rounded-full mr-1.5" :class="{
-                                              'bg-blue-500': queueResult.queue_status === 'Processing',
-                                              'bg-emerald-500': queueResult.queue_status === 'Completed',
-                                              'bg-amber-500': queueResult.queue_status === 'Pending'
-                                          }"></span>
-                                    <span x-text="getQueueLabel(queueResult.queue_status)"></span>
-                                </div>
+                                <span class="text-[10px] block uppercase tracking-wider mb-1" :class="darkMode ? 'text-zinc-500' : 'text-slate-400'">คิวรอคอยข้างหน้า</span>
+                                <span class="text-2xl font-extrabold text-amber-500" x-text="order.queue_position > 1 ? order.queue_position - 1 : 0"></span>
+                            </div>
+                            <div>
+                                <span class="text-[10px] block uppercase tracking-wider mb-1" :class="darkMode ? 'text-zinc-500' : 'text-slate-400'">เวลารอโดยประมาณ</span>
+                                <span class="text-base font-bold block mt-1" :class="darkMode ? 'text-zinc-200' : 'text-slate-700'" x-text="order.estimated_wait_time || '-'"></span>
+                            </div>
+                            <div>
+                                <span class="text-[10px] block uppercase tracking-wider mb-1" :class="darkMode ? 'text-zinc-500' : 'text-slate-400'">ผู้ทำรายการ</span>
+                                <span class="text-xs font-bold block mt-1 truncate" :class="darkMode ? 'text-zinc-300' : 'text-slate-700'" x-text="order.username"></span>
                             </div>
                         </div>
 
-                        <!-- Progress Step Timeline -->
-                        <div class="space-y-4">
-                            <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider">ไทม์ไลน์การทำงานของบอท
-                            </h3>
-                            <div class="relative pl-6 border-l border-zinc-800 space-y-6">
-                                <!-- Step 1 -->
-                                <div class="relative">
-                                    <span
-                                        class="absolute -left-[30px] top-0.5 flex items-center justify-center w-3.5 h-3.5 rounded-full border bg-primary border-primary shadow-[0_0_10px_rgba(74,123,248,0.5)]">
-                                        <svg class="w-2 h-2 text-white" fill="none" viewBox="0 0 24 24"
-                                            stroke="currentColor" stroke-width="4.5">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    </span>
-                                    <div class="text-xs">
-                                        <h4 class="font-bold text-zinc-200">ตรวจสอบสิทธิ์การเป็นสมาชิก (Auto-Login
-                                            Verified)</h4>
-                                        <p class="text-zinc-400 mt-1 font-light">เซสชันเข้าสู่ระบบปลอดภัย ได้รับ Cookie
-                                            Token สำหรับพรีออเดอร์แล้ว</p>
-                                    </div>
-                                </div>
+                        <!-- Step Timeline / Progress Bar -->
+                        <div class="space-y-3">
+                            <h4 class="text-xs font-bold uppercase tracking-wider" :class="darkMode ? 'text-zinc-400' : 'text-slate-500'">ไทม์ไลน์สถานะพรีออเดอร์</h4>
+                            
+                            <!-- Normal Steps (Pending, Processing, Completed) -->
+                            <template x-if="order.queue_status !== 'Failed' && order.queue_status !== 'Cancelled'">
+                                <div class="relative flex items-center justify-between pt-2">
+                                    <!-- Progress Line Background -->
+                                    <div class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 rounded -z-10" :class="darkMode ? 'bg-zinc-800' : 'bg-slate-200'"></div>
+                                    <!-- Progress Fill Line -->
+                                    <div class="absolute left-0 top-1/2 -translate-y-1/2 h-1 rounded -z-10 bg-primary transition-all duration-500" 
+                                        :style="order.queue_status === 'Pending' ? 'width: 0%' : (order.queue_status === 'Processing' ? 'width: 50%' : 'width: 100%')"></div>
 
-                                <!-- Step 2 -->
-                                <div class="relative">
-                                    <span
-                                        class="absolute -left-[30px] top-0.5 flex items-center justify-center w-3.5 h-3.5 rounded-full border transition-all duration-300"
-                                        :class="queueResult.queue_status !== 'Pending' ? 'bg-primary border-primary' : 'bg-zinc-950 border-zinc-700'">
-                                        <svg x-show="queueResult.queue_status !== 'Pending'" class="w-2 h-2 text-white"
-                                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="4.5">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    </span>
-                                    <div class="text-xs">
-                                        <h4 class="font-bold"
-                                            :class="queueResult.queue_status !== 'Pending' ? 'text-zinc-200' : 'text-zinc-500'">
-                                            เข้าคิวแย่งของอัตโนมัติ (Queue Sniping Engine Active)</h4>
-                                        <p class="mt-1 font-light"
-                                            :class="queueResult.queue_status !== 'Pending' ? 'text-zinc-400' : 'text-zinc-600'">
-                                            บอทกำลังรันสคริปต์ยิง HTTP Request เพื่อเกาะกลุ่มจองตั๋ว/สินค้าคิวต้นๆ</p>
+                                    <!-- Step 1: Pending -->
+                                    <div class="flex flex-col items-center">
+                                        <div class="w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold transition-all duration-300"
+                                            :class="order.queue_status === 'Pending' ? 'bg-primary border-primary text-white shadow-[0_0_10px_rgba(74,123,248,0.4)]' : 'bg-primary border-primary text-white'">
+                                            <span x-show="order.queue_status !== 'Pending'">✓</span>
+                                            <span x-show="order.queue_status === 'Pending'">1</span>
+                                        </div>
+                                        <span class="text-[10px] sm:text-xs font-bold mt-1.5" :class="darkMode ? 'text-zinc-300' : 'text-slate-600'">รอดำเนินการ</span>
                                     </div>
-                                </div>
 
-                                <!-- Step 3 -->
-                                <div class="relative">
-                                    <span
-                                        class="absolute -left-[30px] top-0.5 flex items-center justify-center w-3.5 h-3.5 rounded-full border transition-all duration-300"
-                                        :class="queueResult.queue_status === 'Completed' ? 'bg-primary border-primary' : 'bg-zinc-950 border-zinc-700'">
-                                        <svg x-show="queueResult.queue_status === 'Completed'"
-                                            class="w-2 h-2 text-white" fill="none" viewBox="0 0 24 24"
-                                            stroke="currentColor" stroke-width="4.5">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    </span>
-                                    <div class="text-xs">
-                                        <h4 class="font-bold"
-                                            :class="queueResult.queue_status === 'Completed' ? 'text-zinc-200' : 'text-zinc-500'">
-                                            จองคิวสำเร็จ & ส่งอีเมลแจ้งเตือน (Auto-Checkout / Notification)</h4>
-                                        <p class="mt-1 font-light"
-                                            :class="queueResult.queue_status === 'Completed' ? 'text-zinc-400' : 'text-zinc-600'">
-                                            ดำเนินการจองและล็อกพิกัดชำระเงินสำเร็จ บิดคำสั่งซื้อเรียบร้อย</p>
+                                    <!-- Step 2: Processing -->
+                                    <div class="flex flex-col items-center">
+                                        <div class="w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold transition-all duration-300"
+                                            :class="order.queue_status === 'Processing' ? 'bg-primary border-primary text-white shadow-[0_0_10px_rgba(74,123,248,0.4)]' : (order.queue_status === 'Completed' ? 'bg-primary border-primary text-white' : (darkMode ? 'bg-zinc-950 border-zinc-700 text-zinc-500' : 'bg-white border-slate-300 text-slate-400'))">
+                                            <span x-show="order.queue_status === 'Completed'">✓</span>
+                                            <span x-show="order.queue_status !== 'Completed'">2</span>
+                                        </div>
+                                        <span class="text-[10px] sm:text-xs font-bold mt-1.5" :class="order.queue_status === 'Processing' || order.queue_status === 'Completed' ? (darkMode ? 'text-zinc-300' : 'text-slate-600') : (darkMode ? 'text-zinc-600' : 'text-slate-400')">กำลังดำเนินการ</span>
+                                    </div>
+
+                                    <!-- Step 3: Completed -->
+                                    <div class="flex flex-col items-center">
+                                        <div class="w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold transition-all duration-300"
+                                            :class="order.queue_status === 'Completed' ? 'bg-emerald-500 border-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.4)]' : (darkMode ? 'bg-zinc-950 border-zinc-700 text-zinc-500' : 'bg-white border-slate-300 text-slate-400')">
+                                            <span>3</span>
+                                        </div>
+                                        <span class="text-[10px] sm:text-xs font-bold mt-1.5" :class="order.queue_status === 'Completed' ? 'text-emerald-500' : (darkMode ? 'text-zinc-600' : 'text-slate-400')">จัดส่งสำเร็จ</span>
                                     </div>
                                 </div>
-                            </div>
+                            </template>
+
+                            <!-- Exception Steps (Failed / Cancelled) -->
+                            <template x-if="order.queue_status === 'Failed' || order.queue_status === 'Cancelled'">
+                                <div class="relative flex items-center justify-between pt-2">
+                                    <!-- Line background -->
+                                    <div class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 rounded -z-10" :class="darkMode ? 'bg-zinc-800' : 'bg-slate-200'"></div>
+                                    <div class="absolute left-0 top-1/2 -translate-y-1/2 h-1 rounded -z-10 transition-all duration-500"
+                                        :class="order.queue_status === 'Failed' ? 'bg-rose-500 w-full' : 'bg-zinc-500 w-full'"></div>
+
+                                    <!-- Step 1: Started -->
+                                    <div class="flex flex-col items-center">
+                                        <div class="w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold bg-zinc-600 border-zinc-600 text-white">
+                                            <span>✓</span>
+                                        </div>
+                                        <span class="text-[10px] sm:text-xs font-bold mt-1.5" :class="darkMode ? 'text-zinc-400' : 'text-slate-500'">รอดำเนินการ</span>
+                                    </div>
+
+                                    <!-- Step 2: Failed/Cancelled Outcome -->
+                                    <div class="flex flex-col items-center">
+                                        <div class="w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold text-white"
+                                            :class="order.queue_status === 'Failed' ? 'bg-rose-500 border-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.4)]' : 'bg-zinc-500 border-zinc-500'">
+                                            <span x-text="order.queue_status === 'Failed' ? '✕' : '—'"></span>
+                                        </div>
+                                        <span class="text-[10px] sm:text-xs font-bold mt-1.5" 
+                                            :class="order.queue_status === 'Failed' ? 'text-rose-500' : (darkMode ? 'text-zinc-400' : 'text-slate-500')"
+                                            x-text="order.queue_status === 'Failed' ? 'จัดส่งไม่สำเร็จ' : 'ยกเลิกรายการ'">
+                                        </span>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
 
+                        <!-- Team Note Remarks Section -->
+                        <div class="border-t pt-4 space-y-2" :class="darkMode ? 'border-zinc-800' : 'border-slate-100'">
+                            <span class="text-[10px] uppercase font-bold tracking-wider" :class="darkMode ? 'text-zinc-500' : 'text-slate-400'">หมายเหตุ / ข้อความจากทีมงาน</span>
+                            <p class="text-xs font-light leading-relaxed" :class="darkMode ? 'text-zinc-300' : 'text-slate-600'" x-text="order.notes || 'ไม่มีหมายเหตุเพิ่มเติมสำหรับรายการนี้'"></p>
+                        </div>
                     </div>
                 </div>
             </template>
 
             <!-- Error Not Found Card -->
-            <template x-if="!queueResult">
-                <div class="bg-card border border-card-border rounded-xl shadow-lg p-8 text-center space-y-4">
-                    <div
-                        class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/20">
+            <template x-if="!queueResults || queueResults.length === 0">
+                <div class="border rounded-xl shadow-lg p-8 text-center space-y-4" :class="darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-slate-200'">
+                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/20">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                     </div>
                     <div class="space-y-1">
-                        <h3 class="text-base font-bold text-zinc-200">ไม่พบบัญชีผู้ฝากจองคิว</h3>
-                        <p class="text-xs text-zinc-400 max-w-sm mx-auto font-light">
-                            ไม่พบคลังข้อมูลสไนเปอร์คิวสำหรับชื่อผู้ใช้ "<span class="font-semibold text-zinc-300"
-                                x-text="username"></span>" กรุณาตรวจสอบหรือแจ้งแอดมินอีกครั้ง
+                        <h3 class="text-base font-bold" :class="darkMode ? 'text-zinc-200' : 'text-slate-800'">ไม่พบบัญชีผู้ใช้ในระบบ</h3>
+                        <p class="text-xs max-w-sm mx-auto font-light" :class="darkMode ? 'text-zinc-400' : 'text-slate-500'">
+                            ไม่พบคลังข้อมูลคิวสั่งซื้อสำหรับชื่อผู้ใช้ "<span class="font-semibold" :class="darkMode ? 'text-zinc-300' : 'text-slate-700'" x-text="username"></span>" กรุณาตรวจสอบหรือแจ้งทีมแอดมินอีกครั้ง
                         </p>
                     </div>
                 </div>
@@ -319,7 +311,7 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-card border-t border-card-border py-8 text-center text-xs text-zinc-500 relative z-10">
+    <footer class="border-t py-8 text-center text-xs relative z-10" :class="darkMode ? 'bg-zinc-950 border-zinc-900 text-zinc-600' : 'bg-white border-slate-200 text-slate-500'">
         <div class="max-w-7xl mx-auto px-4 space-y-2 font-light">
             <p>© 2026 checkorder. All rights reserved. • System Powered by checkorder.com</p>
         </div>
@@ -332,9 +324,21 @@
                 username: '',
                 loading: false,
                 searched: false,
-                queueResult: null,
+                queueResults: null, // Array of preorder items
+                darkMode: true, // Dark mode active by default
 
                 init() {
+                    // Check localstorage for theme preference
+                    const savedTheme = localStorage.getItem('theme');
+                    if (savedTheme === 'light') {
+                        this.darkMode = false;
+                    }
+                    this.initStars();
+                },
+
+                toggleTheme() {
+                    this.darkMode = !this.darkMode;
+                    localStorage.setItem('theme', this.darkMode ? 'dark' : 'light');
                     this.initStars();
                 },
 
@@ -388,34 +392,24 @@
 
                     this.loading = true;
                     this.searched = false;
-                    this.queueResult = null;
+                    this.queueResults = null;
 
                     try {
-                        // Dynamically use localhost:3000 if loaded from VS Code Live Server (port 5500)
                         const host = window.location.port === '3000' ? '' : 'http://localhost:3000';
                         const response = await fetch(`${host}/api/check-queue?username=${encodeURIComponent(query)}`);
                         if (response.ok) {
                             const data = await response.json();
-                            this.queueResult = data.success ? data.data : null;
+                            this.queueResults = data.success ? data.data : [];
                         } else {
-                            this.queueResult = null;
+                            this.queueResults = [];
                         }
                     } catch (err) {
                         console.error('Connection error:', err);
-                        this.queueResult = null;
+                        this.queueResults = [];
                     } finally {
                         this.loading = false;
                         this.searched = true;
                     }
-                },
-
-                getQueueLabel(status) {
-                    const labels = {
-                        'Pending': 'กำลังรอคิวเริ่มบอท',
-                        'Processing': 'บอทกำลังแย่งจองคิว',
-                        'Completed': 'ดำเนินการกดสำเร็จเสร็จสิ้น'
-                    };
-                    return labels[status] || status;
                 },
 
                 formatDate(dateStr) {
@@ -433,5 +427,4 @@
         }
     </script>
 </body>
-
 </html>
