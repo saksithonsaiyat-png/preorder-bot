@@ -109,8 +109,22 @@
             </p>
         </div>
 
+        <!-- Service Closed Banner -->
+        <template x-if="serviceClosed">
+            <div class="border rounded-xl shadow-2xl p-8 w-full max-w-xl mx-auto text-center space-y-4" :class="darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-slate-200'">
+                <div class="w-16 h-16 mx-auto rounded-full flex items-center justify-center" :class="darkMode ? 'bg-amber-500/10' : 'bg-amber-50'">
+                    <svg class="w-8 h-8 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.999L13.732 4.001c-.77-1.333-2.694-1.333-3.464 0L3.34 16.001C2.57 17.334 3.532 19.001 5.072 19.001z" />
+                    </svg>
+                </div>
+                <h2 class="text-xl font-bold" :class="darkMode ? 'text-white' : 'text-slate-800'">ปิดให้บริการชั่วคราว</h2>
+                <p class="text-sm" :class="darkMode ? 'text-zinc-400' : 'text-slate-600'" x-text="serviceClosedMessage"></p>
+                <p class="text-xs" :class="darkMode ? 'text-zinc-600' : 'text-slate-400'">กรุณากลับมาตรวจสอบอีกครั้งในภายหลัง</p>
+            </div>
+        </template>
+
         <!-- Central Search Box -->
-        <div class="border rounded-xl shadow-2xl p-6 sm:p-8 w-full max-w-xl mx-auto transition-all duration-300" :class="darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-slate-200'">
+        <div x-show="!serviceClosed" class="border rounded-xl shadow-2xl p-6 sm:p-8 w-full max-w-xl mx-auto transition-all duration-300" :class="darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-slate-200'">
             <form @submit.prevent="checkQueue()" class="space-y-5">
                 <div>
                     <label for="username-input" class="block text-xs font-bold uppercase tracking-wider mb-2.5" :class="darkMode ? 'text-zinc-400' : 'text-slate-500'">
@@ -324,16 +338,31 @@
                 username: '',
                 loading: false,
                 searched: false,
-                queueResults: null, // Array of preorder items
-                darkMode: true, // Dark mode active by default
+                queueResults: null,
+                darkMode: true,
+                serviceClosed: false,
+                serviceClosedMessage: '',
 
                 init() {
-                    // Check localstorage for theme preference
                     const savedTheme = localStorage.getItem('theme');
                     if (savedTheme === 'light') {
                         this.darkMode = false;
                     }
                     this.initStars();
+                    this.checkServiceStatus();
+                },
+
+                async checkServiceStatus() {
+                    try {
+                        const res = await fetch('/api/settings');
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.success) {
+                                this.serviceClosed = !data.data.is_queue_active;
+                                this.serviceClosedMessage = data.data.closed_message || 'ระบบปิดปรับปรุงชั่วคราว';
+                            }
+                        }
+                    } catch (e) { }
                 },
 
                 toggleTheme() {
@@ -397,9 +426,13 @@
                     try {
                         const host = window.location.port === '3000' ? '' : 'http://localhost:3000';
                         const response = await fetch(`${host}/api/check-queue?username=${encodeURIComponent(query)}`);
-                        if (response.ok) {
-                            const data = await response.json();
-                            this.queueResults = data.success ? data.data : [];
+                        const data = await response.json();
+                        if (data.service_closed) {
+                            this.serviceClosed = true;
+                            this.serviceClosedMessage = data.message;
+                            this.queueResults = [];
+                        } else if (data.success) {
+                            this.queueResults = data.data;
                         } else {
                             this.queueResults = [];
                         }

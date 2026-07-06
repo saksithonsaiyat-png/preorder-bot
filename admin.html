@@ -1,15 +1,14 @@
 <!DOCTYPE html>
 <html lang="th" class="h-full">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบควบคุมหลังบ้าน (Admin Control Panel) • checkorder</title>
-    <!-- Google Fonts: IBM Plex Sans Thai & Inter -->
+    <title>ระบบหลังบ้าน (Admin Control Panel) • checkorder</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- Tailwind CSS CDN -->
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -42,324 +41,727 @@
             }
         }
     </script>
-    <!-- Alpine.js CDN -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         body {
             font-family: 'IBM Plex Sans Thai', 'Inter', sans-serif;
             background-color: #030014;
         }
-        /* Custom scrollbar for log terminal */
+
+        [x-cloak] {
+            display: none !important;
+        }
+
         .terminal-scroll::-webkit-scrollbar {
             width: 6px;
         }
+
         .terminal-scroll::-webkit-scrollbar-track {
             background: #09090b;
         }
+
         .terminal-scroll::-webkit-scrollbar-thumb {
             background: #27272a;
             border-radius: 3px;
         }
+
         .terminal-scroll::-webkit-scrollbar-thumb:hover {
             background: #3f3f46;
         }
     </style>
 </head>
-<body class="text-zinc-100 min-h-screen flex flex-col antialiased relative overflow-x-hidden" x-data="adminDashboard()">
+
+<body class="text-zinc-100 min-h-screen flex flex-col antialiased relative overflow-x-hidden"
+    x-data="adminDashboard()">
 
     <!-- Stars Background -->
     <canvas id="background" class="w-full h-full absolute inset-0 -z-20 opacity-30 pointer-events-none"></canvas>
-    
+
     <!-- Glow Ellipses -->
     <div class="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-blue-500/10 blur-[150px] -z-10 pointer-events-none"></div>
     <div class="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-purple-500/10 blur-[150px] -z-10 pointer-events-none"></div>
 
-    <!-- Header -->
-    <header class="bg-[#030014]/85 border-b border-white/5 sticky top-0 z-40 backdrop-blur-md">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <span class="text-2xl font-extrabold tracking-wider bg-clip-text text-transparent bg-brand-gradient">checkorder</span>
-                <span class="text-xs bg-purple-500/20 text-purple-400 border border-purple-500/30 font-semibold px-2.5 py-0.5 rounded-full">Developer Admin Panel</span>
+    <!-- ==================== AUTH OVERLAY ==================== -->
+    <div x-show="!authenticated"
+        class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" x-cloak>
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-2xl space-y-6">
+            <div class="text-center space-y-2">
+                <span class="text-3xl font-extrabold tracking-wider bg-clip-text text-transparent bg-brand-gradient">checkorder</span>
+                <h3 class="text-lg font-bold text-white"
+                    x-text="authMode === 'login' ? 'เข้าสู่ระบบผู้ดูแลหลังบ้าน' : 'สมัครสมาชิกผู้ดูแลระบบ'"></h3>
             </div>
-            <div class="flex items-center space-x-4">
-                <a href="/" class="text-xs font-semibold text-zinc-400 hover:text-white transition-colors flex items-center gap-1">
-                    <span>กลับไปยังหน้าบ้าน (User Portal)</span>
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                </a>
-            </div>
-        </div>
-    </header>
 
-    <!-- Main Workspace -->
-    <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        
-        <!-- Live Alert Banner for Kill Switch -->
-        <template x-if="stats.isGlobalKillSwitchActive">
-            <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between text-red-200 animate-pulse">
-                <div class="flex items-center space-x-3">
-                    <svg class="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                    </svg>
-                    <div>
-                        <span class="font-bold block">GLOBAL KILL SWITCH IS ACTIVE</span>
-                        <span class="text-xs opacity-80">การทำงานของบอทและทราฟฟิกเชื่อมต่อภายนอกทั้งหมดถูกบล็อกโดยสมบูรณ์</span>
-                    </div>
+            <!-- Error message -->
+            <div x-show="authError" class="bg-rose-500/10 border border-rose-500/30 rounded-lg p-3 text-xs text-rose-300 text-center" x-text="authError" x-cloak></div>
+
+            <!-- Login Form -->
+            <form x-show="authMode === 'login'" @submit.prevent="handleLogin()" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">ชื่อผู้ใช้ (Username)</label>
+                    <input type="text" x-model="loginForm.username" placeholder="admin"
+                        class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3.5 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-white"
+                        required>
                 </div>
-                <button @click="toggleKillSwitch(false)" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-1.5 px-4 rounded-lg text-xs transition">
-                    ปิดการทำงานสวิตช์ภัยพิบัติ
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">รหัสผ่าน (Password)</label>
+                    <input type="password" x-model="loginForm.password" placeholder="••••••••"
+                        class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3.5 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-white"
+                        required>
+                </div>
+                <button type="submit"
+                    class="w-full bg-primary hover:opacity-90 text-white font-semibold py-2.5 rounded-lg text-sm transition">
+                    เข้าสู่ระบบ
                 </button>
-            </div>
-        </template>
-
-        <!-- Stats Overview Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <!-- Metric 1: Uptime -->
-            <div class="bg-card border border-card-border rounded-xl p-5">
-                <span class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">ระยะเวลาเซิร์ฟเวอร์เปิดใช้งาน</span>
-                <span class="text-2xl font-extrabold text-white block mt-2" x-text="stats.uptime || 'กำลังตรวจสอบ...'"></span>
-            </div>
-            <!-- Metric 2: Active Tasks -->
-            <div class="bg-card border border-card-border rounded-xl p-5">
-                <span class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">บอทที่ทำงานพร้อมกันขณะนี้</span>
-                <span class="text-2xl font-extrabold text-primary block mt-2" x-text="stats.activeConcurrentTasks !== undefined ? stats.activeConcurrentTasks + ' Tasks' : 'กำลังตรวจสอบ...'"></span>
-            </div>
-            <!-- Metric 3: Memory RSS -->
-            <div class="bg-card border border-card-border rounded-xl p-5">
-                <span class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">การใช้เมมโมรี่ (Heap Used)</span>
-                <span class="text-2xl font-extrabold text-emerald-400 block mt-2" x-text="stats.memoryUsage ? stats.memoryUsage.heapUsed : 'กำลังตรวจสอบ...'"></span>
-            </div>
-            <!-- Metric 4: System Connection -->
-            <div class="bg-card border border-card-border rounded-xl p-5 flex flex-col justify-between">
-                <span class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">สถานะ SSE STREAM HUB</span>
-                <div class="flex items-center space-x-2 mt-2">
-                    <span class="w-3 h-3 rounded-full animate-ping" :class="sseConnected ? 'bg-emerald-500' : 'bg-rose-500'"></span>
-                    <span class="font-bold text-sm" :class="sseConnected ? 'text-emerald-400' : 'text-rose-400'" x-text="sseConnected ? 'ออนไลน์ (เชื่อมต่อแล้ว)' : 'กำลังเชื่อมต่อใหม่...'"></span>
+                <div class="text-center text-xs text-zinc-500 pt-2">
+                    ผู้ดูแลระบบคนใหม่?
+                    <button type="button" @click="authMode = 'register'; authError = ''"
+                        class="text-primary hover:underline font-semibold">สมัครสมาชิก</button>
                 </div>
+            </form>
+
+            <!-- Register Form -->
+            <form x-show="authMode === 'register'" @submit.prevent="handleRegister()" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">ตั้งชื่อผู้ใช้ (Username)</label>
+                    <input type="text" x-model="registerForm.username" placeholder="ชื่อผู้ใช้คนใหม่"
+                        class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3.5 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-white"
+                        required>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">ตั้งรหัสผ่าน (Password)</label>
+                    <input type="password" x-model="registerForm.password" placeholder="••••••••"
+                        class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3.5 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-white"
+                        required>
+                </div>
+                <button type="submit"
+                    class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-lg text-sm transition">
+                    ยืนยันการสมัครสมาชิก
+                </button>
+                <div class="text-center text-xs text-zinc-500 pt-2">
+                    มีบัญชีอยู่แล้ว?
+                    <button type="button" @click="authMode = 'login'; authError = ''"
+                        class="text-primary hover:underline font-semibold">เข้าสู่ระบบ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== MAIN DASHBOARD LAYOUT ==================== -->
+    <div x-show="authenticated" class="flex-grow flex flex-col" x-cloak>
+
+        <!-- Header -->
+        <header class="bg-[#030014]/85 border-b border-white/5 sticky top-0 z-40 backdrop-blur-md">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <span class="text-2xl font-extrabold tracking-wider bg-clip-text text-transparent bg-brand-gradient">checkorder</span>
+                    <span class="text-xs bg-purple-500/20 text-purple-400 border border-purple-500/30 font-semibold px-2.5 py-0.5 rounded-full">Admin Panel</span>
+                </div>
+                <div class="flex items-center space-x-5 text-xs font-medium">
+                    <a href="/" class="text-zinc-400 hover:text-white transition flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                        หน้าบ้าน
+                    </a>
+                    <span class="text-zinc-500">|</span>
+                    <span class="text-zinc-400">ผู้ใช้: <span class="text-white font-bold" x-text="adminUsername"></span></span>
+                    <button @click="handleLogout()" class="text-rose-400 hover:text-rose-300 font-semibold hover:underline">ออกจากระบบ</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="bg-zinc-950/80 border-b border-white/5 backdrop-blur-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1 text-sm">
+                <template x-for="tab in tabs" :key="tab.id">
+                    <button @click="currentTab = tab.id"
+                        :class="currentTab === tab.id ? 'border-primary text-white font-bold bg-white/[0.02]' : 'border-transparent text-zinc-400 hover:text-white hover:bg-white/[0.01]'"
+                        class="py-3.5 px-4 border-b-2 transition rounded-t-lg" x-text="tab.label"></button>
+                </template>
             </div>
         </div>
 
-        <!-- Controls Section -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Preorder Task Scheduler Form -->
-            <div class="bg-card border border-card-border rounded-xl p-6 lg:col-span-1 flex flex-col justify-between">
-                <div class="space-y-4">
-                    <div class="border-b border-card-border pb-3">
-                        <h2 class="text-lg font-bold text-white">ตั้งเวลางานพรีออเดอร์บอท</h2>
-                        <p class="text-xs text-zinc-400">สร้างและกำหนดเวลาการแย่งซื้อสินค้าพรีออเดอร์อัตโนมัติ</p>
+        <!-- Main Workspace Content -->
+        <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+
+            <!-- Kill Switch Banner -->
+            <template x-if="stats.isGlobalKillSwitchActive">
+                <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between text-red-200 animate-pulse">
+                    <div class="flex items-center space-x-3">
+                        <svg class="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                        <div>
+                            <span class="font-bold block">KILL SWITCH ACTIVE</span>
+                            <span class="text-xs opacity-80">ทุกคิวงานและทราฟฟิกถูกบล็อก</span>
+                        </div>
+                    </div>
+                    <button @click="toggleKillSwitch(false)" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-1.5 px-4 rounded-lg text-xs transition">ปิดสวิตช์</button>
+                </div>
+            </template>
+
+            <!-- ==================== TAB 1: OVERVIEW ==================== -->
+            <div x-show="currentTab === 'overview'" class="space-y-6">
+                <!-- Period Selector -->
+                <div class="flex items-center justify-between border-b border-zinc-800 pb-4">
+                    <div>
+                        <h2 class="text-xl font-bold">ภาพรวมระบบ (Dashboard)</h2>
+                        <p class="text-xs text-zinc-400 mt-1">สถิติการพรีออเดอร์แบ่งตามช่วงเวลา</p>
+                    </div>
+                    <div class="flex bg-zinc-900 border border-zinc-800 rounded-lg p-0.5 text-xs font-semibold">
+                        <button @click="statsPeriod = 'daily'" :class="statsPeriod === 'daily' ? 'bg-primary text-white' : 'text-zinc-400 hover:text-white'" class="px-4 py-1.5 rounded-md transition">รายวัน</button>
+                        <button @click="statsPeriod = 'weekly'" :class="statsPeriod === 'weekly' ? 'bg-primary text-white' : 'text-zinc-400 hover:text-white'" class="px-4 py-1.5 rounded-md transition">รายสัปดาห์</button>
+                        <button @click="statsPeriod = 'monthly'" :class="statsPeriod === 'monthly' ? 'bg-primary text-white' : 'text-zinc-400 hover:text-white'" class="px-4 py-1.5 rounded-md transition">รายเดือน</button>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-card border border-card-border rounded-xl p-5 text-center hover:border-blue-500/30 transition">
+                        <span class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider block">กำลังดำเนินการ / รอคิว</span>
+                        <span class="text-3xl font-extrabold text-blue-400 block mt-3" x-text="dashboardStats[statsPeriod]?.processing ?? 0"></span>
+                        <span class="text-[10px] text-zinc-600 mt-1 block">รายการ</span>
+                    </div>
+                    <div class="bg-card border border-card-border rounded-xl p-5 text-center hover:border-emerald-500/30 transition">
+                        <span class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider block">จัดส่งสำเร็จ</span>
+                        <span class="text-3xl font-extrabold text-emerald-400 block mt-3" x-text="dashboardStats[statsPeriod]?.completed ?? 0"></span>
+                        <span class="text-[10px] text-zinc-600 mt-1 block">รายการ</span>
+                    </div>
+                    <div class="bg-card border border-card-border rounded-xl p-5 text-center hover:border-rose-500/30 transition">
+                        <span class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider block">จัดส่งไม่สำเร็จ</span>
+                        <span class="text-3xl font-extrabold text-rose-400 block mt-3" x-text="dashboardStats[statsPeriod]?.failed ?? 0"></span>
+                        <span class="text-[10px] text-zinc-600 mt-1 block">รายการ</span>
+                    </div>
+                    <div class="bg-card border border-card-border rounded-xl p-5 text-center hover:border-zinc-500/30 transition">
+                        <span class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider block">ยกเลิกรายการ</span>
+                        <span class="text-3xl font-extrabold text-zinc-400 block mt-3" x-text="dashboardStats[statsPeriod]?.cancelled ?? 0"></span>
+                        <span class="text-[10px] text-zinc-600 mt-1 block">รายการ</span>
+                    </div>
+                </div>
+
+                <!-- System + Bot Scheduler + Terminal -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
+                    <!-- Bot Scheduler -->
+                    <div class="bg-card border border-card-border rounded-xl p-6 space-y-4">
+                        <h3 class="text-base font-bold text-white border-b border-zinc-800 pb-3">ตั้งเวลาบอทพรีออเดอร์</h3>
+                        <form @submit.prevent="createTask()" class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-zinc-400 uppercase mb-1.5">ลิงก์ปลายทาง</label>
+                                <input type="text" x-model="taskForm.target_url" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white" required>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-zinc-400 uppercase mb-1.5">Variant ID</label>
+                                    <input type="text" x-model="taskForm.variant_id" placeholder="variant_id" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white" required>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-zinc-400 uppercase mb-1.5">จำนวน</label>
+                                    <input type="number" x-model="taskForm.quantity" min="1" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white" required>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-zinc-400 uppercase mb-1.5">เวลาทำงาน</label>
+                                <input type="datetime-local" x-model="taskForm.execution_time" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white" required>
+                            </div>
+                            <button type="submit" class="w-full bg-primary hover:opacity-90 text-white font-semibold py-2 rounded-lg text-sm transition">ยืนยันกำหนดการรันบอท</button>
+                        </form>
                     </div>
 
-                    <form @submit.prevent="createTask()" class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">ลิงก์ปลายทาง (Target URL)</label>
-                            <input type="text" x-model="taskForm.target_url" placeholder="https://thewestern.rdcw.xyz/api/checkout" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-white" required>
+                    <!-- Live Terminal -->
+                    <div class="bg-card border border-card-border rounded-xl p-6 lg:col-span-2 flex flex-col">
+                        <div class="border-b border-zinc-800 pb-3 flex justify-between items-center">
+                            <h3 class="text-base font-bold text-white">คอนโซลไลฟ์สตรีม (SSE Logs)</h3>
+                            <button @click="toggleKillSwitch(!stats.isGlobalKillSwitchActive)"
+                                :class="stats.isGlobalKillSwitchActive ? 'bg-zinc-800 hover:bg-zinc-700 border-zinc-600 text-zinc-300' : 'bg-red-500/10 hover:bg-red-500/20 border-red-500/30 text-red-400'"
+                                class="border px-3 py-1.5 rounded-lg text-[10px] font-bold transition flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full" :class="stats.isGlobalKillSwitchActive ? 'bg-zinc-400' : 'bg-red-500 animate-ping'"></span>
+                                <span x-text="stats.isGlobalKillSwitchActive ? 'ปลดล็อกระบบ' : 'EMERGENCY STOP'"></span>
+                            </button>
                         </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">รหัสสินค้า (Variant ID)</label>
-                                <input type="text" x-model="taskForm.variant_id" placeholder="variant_123" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-white" required>
+                        <div class="flex-grow mt-4 bg-black border border-zinc-800 rounded-lg p-4 h-72 flex flex-col">
+                            <div class="flex justify-between items-center text-[10px] text-zinc-500 border-b border-zinc-900 pb-2 mb-2">
+                                <span>system-console:~$ tail -f logs/application.log</span>
+                                <button @click="logs = []" class="hover:text-white transition">Clear</button>
                             </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">จำนวนสินค้า (Quantity)</label>
-                                <input type="number" x-model="taskForm.quantity" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-white" min="1" required>
+                            <div class="flex-grow overflow-y-auto terminal-scroll text-[11px] font-mono space-y-1 pr-2" id="console-output">
+                                <div class="text-zinc-500">&gt; Live stream initialized.</div>
+                                <template x-for="(log, i) in logs" :key="i">
+                                    <div :class="{
+                                        'text-zinc-300': log.level === 'info',
+                                        'text-yellow-400': log.level === 'warn',
+                                        'text-red-400 font-semibold': log.level === 'error',
+                                        'text-emerald-400 font-bold': log.level === 'success'
+                                    }">
+                                        <span class="text-zinc-500" x-text="`[${log.time}]`"></span>
+                                        <span x-text="`[${log.level.toUpperCase()}]: ${log.message}`"></span>
+                                    </div>
+                                </template>
                             </div>
                         </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">เวลาเริ่มรันบอท (Target Execution Time)</label>
-                            <input type="datetime-local" x-model="taskForm.execution_time" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-white" required>
-                        </div>
+                    </div>
+                </div>
+            </div>
 
-                        <button type="submit" class="w-full bg-primary hover:opacity-90 text-white font-semibold py-2.5 rounded-lg text-sm transition shadow-md">
-                            กำหนดตารางงานพรีออเดอร์
-                        </button>
+            <!-- ==================== TAB 2: ORDERS ==================== -->
+            <div x-show="currentTab === 'orders'" class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-xl font-bold">รายการออเดอร์ทั้งหมด</h2>
+                        <p class="text-xs text-zinc-400 mt-1">จัดการ แก้ไข ปรับคิว และสถานะของออเดอร์พรีออเดอร์</p>
+                    </div>
+                    <button @click="fetchOrders()" class="bg-zinc-800 hover:bg-zinc-700 text-white font-semibold py-1.5 px-4 rounded-lg text-xs border border-zinc-700 transition flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        รีเฟรช
+                    </button>
+                </div>
+
+                <div class="bg-card border border-card-border rounded-xl overflow-hidden shadow-lg">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead>
+                                <tr class="bg-zinc-950 border-b border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider text-[10px]">
+                                    <th class="p-4">สินค้า</th>
+                                    <th class="p-4">ผู้ซื้อ</th>
+                                    <th class="p-4">เวลาสั่งซื้อ</th>
+                                    <th class="p-4">หมายเหตุ</th>
+                                    <th class="p-4 text-center">คิว</th>
+                                    <th class="p-4 text-center">เวลานับถอยหลัง</th>
+                                    <th class="p-4 text-center">สถานะ</th>
+                                    <th class="p-4 text-center">อัปเดตล่าสุด</th>
+                                    <th class="p-4 text-center">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="order in orders" :key="order.id">
+                                    <tr class="border-b border-zinc-800/60 hover:bg-white/[0.015] transition">
+                                        <td class="p-4">
+                                            <div class="flex items-center space-x-3">
+                                                <img :src="order.product_image" @error="$event.target.src='https://placehold.co/80x80/4A7BF8/FFF?text=Product'" class="w-10 h-10 object-cover rounded-lg border border-zinc-800">
+                                                <span class="font-bold text-white text-[11px] max-w-[180px] truncate block" x-text="order.product_name"></span>
+                                            </div>
+                                        </td>
+                                        <td class="p-4 font-semibold text-zinc-300 text-[11px]" x-text="order.username"></td>
+                                        <td class="p-4 text-zinc-400 text-[10px]" x-text="formatDate(order.purchase_time)"></td>
+                                        <td class="p-4 text-zinc-500 text-[10px] max-w-[120px] truncate" x-text="order.buyer_notes || '-'"></td>
+                                        <td class="p-4 text-center">
+                                            <span class="font-extrabold text-sm text-primary" x-text="order.queue_position > 0 ? '#' + order.queue_position : '-'"></span>
+                                        </td>
+                                        <td class="p-4 text-center font-bold text-blue-400 text-[11px]" x-text="getCountdownLabel(order)"></td>
+                                        <td class="p-4 text-center">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                                :class="{
+                                                    'bg-amber-500/10 text-amber-400 border border-amber-500/20': order.queue_status === 'Pending',
+                                                    'bg-blue-500/10 text-blue-400 border border-blue-500/20': order.queue_status === 'Processing',
+                                                    'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20': order.queue_status === 'Completed',
+                                                    'bg-rose-500/10 text-rose-400 border border-rose-500/20': order.queue_status === 'Failed',
+                                                    'bg-zinc-500/10 text-zinc-400 border border-zinc-500/20': order.queue_status === 'Cancelled'
+                                                }">
+                                                <span class="w-1.5 h-1.5 rounded-full mr-1.5" :class="{
+                                                    'bg-amber-500': order.queue_status === 'Pending',
+                                                    'bg-blue-500': order.queue_status === 'Processing',
+                                                    'bg-emerald-500': order.queue_status === 'Completed',
+                                                    'bg-rose-500': order.queue_status === 'Failed',
+                                                    'bg-zinc-400': order.queue_status === 'Cancelled'
+                                                }"></span>
+                                                <span x-text="getQueueLabel(order.queue_status)"></span>
+                                            </span>
+                                        </td>
+                                        <td class="p-4 text-center text-[10px] text-zinc-500" x-text="formatDate(order.last_updated)"></td>
+                                        <td class="p-4 text-center">
+                                            <div class="flex items-center justify-center gap-1.5">
+                                                <button @click="openEditModal(order)" class="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 px-2.5 py-1 rounded text-[10px] font-bold transition">แก้ไข</button>
+                                                <button @click="deleteOrder(order.id)" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2.5 py-1 rounded text-[10px] font-bold transition">ลบ</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <template x-if="orders.length === 0">
+                                    <tr><td colspan="9" class="p-8 text-center text-zinc-500 text-sm">ไม่มีออเดอร์ในระบบ</td></tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== TAB 3: SETTINGS ==================== -->
+            <div x-show="currentTab === 'settings'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Queue Service Control -->
+                <div class="bg-card border border-card-border rounded-xl p-6 space-y-6">
+                    <div class="border-b border-zinc-800 pb-3">
+                        <h3 class="text-lg font-bold text-white">ควบคุมการให้บริการระบบคิว</h3>
+                        <p class="text-xs text-zinc-400">เปิด/ปิดระบบตรวจสอบคิวสำหรับผู้ใช้งานหน้าบ้าน</p>
+                    </div>
+                    <form @submit.prevent="saveSystemSettings()" class="space-y-4">
+                        <div class="flex items-center space-x-3 bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+                            <input type="checkbox" id="queue-toggle" x-model="settingsForm.is_queue_active" class="w-5 h-5 rounded text-primary bg-black border-zinc-700 focus:ring-0 cursor-pointer">
+                            <label for="queue-toggle" class="cursor-pointer">
+                                <span class="text-sm font-semibold text-zinc-200 block">เปิดให้บริการเช็คคิว</span>
+                                <span class="text-[10px] text-zinc-500" x-text="settingsForm.is_queue_active ? 'หน้าบ้านทำงานปกติ' : 'หน้าบ้านถูกปิดกั้น ผู้ใช้จะเห็นข้อความด้านล่าง'"></span>
+                            </label>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">ข้อความแจ้งผู้ใช้ (กรณีปิดบริการ)</label>
+                            <textarea x-model="settingsForm.closed_message" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white h-24 resize-none" required></textarea>
+                        </div>
+                        <button type="submit" class="bg-primary hover:opacity-90 text-white font-semibold py-2 px-5 rounded-lg text-sm transition">บันทึกการตั้งค่า</button>
+                    </form>
+                </div>
+
+                <!-- Admin Account Settings -->
+                <div class="bg-card border border-card-border rounded-xl p-6 space-y-6">
+                    <div class="border-b border-zinc-800 pb-3">
+                        <h3 class="text-lg font-bold text-white">ความปลอดภัยบัญชีผู้ดูแล</h3>
+                        <p class="text-xs text-zinc-400">แก้ไขข้อมูลบัญชีของคุณ หรือเพิ่มผู้ดูแลระบบคนใหม่</p>
+                    </div>
+
+                    <!-- Update own profile -->
+                    <form @submit.prevent="updateProfile()" class="space-y-3 border-b border-zinc-800/80 pb-6">
+                        <h4 class="text-xs font-bold text-zinc-400 uppercase">อัปเดตข้อมูลของฉัน</h4>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-zinc-500 mb-1">ชื่อผู้ใช้ใหม่</label>
+                                <input type="text" x-model="profileForm.newUsername" :placeholder="adminUsername" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-purple-500 text-xs text-white" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-zinc-500 mb-1">รหัสผ่านใหม่</label>
+                                <input type="password" x-model="profileForm.newPassword" placeholder="••••••••" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-purple-500 text-xs text-white" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-1.5 px-4 rounded text-xs transition">ยืนยันอัปเดตข้อมูล</button>
+                    </form>
+
+                    <!-- Register new admin -->
+                    <form @submit.prevent="registerNewAdmin()" class="space-y-3">
+                        <h4 class="text-xs font-bold text-zinc-400 uppercase">เพิ่มผู้ดูแลระบบคนอื่น</h4>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-zinc-500 mb-1">ชื่อผู้ใช้</label>
+                                <input type="text" x-model="newAdminForm.username" placeholder="ชื่อผู้ดูแลคนใหม่" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs text-white" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-zinc-500 mb-1">รหัสผ่าน</label>
+                                <input type="password" x-model="newAdminForm.password" placeholder="••••••••" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs text-white" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1.5 px-4 rounded text-xs transition">เพิ่มผู้ดูแลคนใหม่</button>
                     </form>
                 </div>
             </div>
 
-            <!-- Developer Live Logs Terminal & Abort panel -->
-            <div class="bg-card border border-card-border rounded-xl p-6 lg:col-span-2 flex flex-col">
-                <div class="border-b border-card-border pb-3 flex justify-between items-center">
+            <!-- ==================== TAB 4: AUDIT LOGS ==================== -->
+            <div x-show="currentTab === 'audit'" class="space-y-4">
+                <div class="flex items-center justify-between">
                     <div>
-                        <h2 class="text-lg font-bold text-white">คอนโซลวิเคราะห์ระบบแบบเรียลไทม์</h2>
-                        <p class="text-xs text-zinc-400">แสดงผลล็อก Winston และ SSE status updates สดๆ จากเซิร์ฟเวอร์</p>
+                        <h2 class="text-xl font-bold">ประวัติการอัปเดตระบบ</h2>
+                        <p class="text-xs text-zinc-400 mt-1">บันทึกทุกการเปลี่ยนแปลงโดยผู้ดูแลระบบ</p>
                     </div>
-                    
-                    <!-- Emergency Stop Switch -->
-                    <button @click="toggleKillSwitch(!stats.isGlobalKillSwitchActive)" 
-                            :class="stats.isGlobalKillSwitchActive ? 'bg-zinc-800 hover:bg-zinc-700 border-zinc-600' : 'bg-red-500/10 hover:bg-red-500/20 border-red-500/30 text-red-400'"
-                            class="border px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 active:scale-95">
-                        <span class="w-2.5 h-2.5 rounded-full bg-red-500" :class="stats.isGlobalKillSwitchActive ? 'bg-zinc-400' : 'bg-red-500 animate-ping'"></span>
-                        <span x-text="stats.isGlobalKillSwitchActive ? 'ปลดปุ่มหยุดด่วน' : 'EMERGENCY KILL SWITCH'"></span>
-                    </button>
+                    <button @click="fetchAuditLogs()" class="bg-zinc-800 hover:bg-zinc-700 text-white font-semibold py-1.5 px-4 rounded-lg text-xs border border-zinc-700 transition">รีเฟรช</button>
                 </div>
 
-                <!-- Log Panel -->
-                <div class="flex-grow mt-4 bg-black border border-zinc-800 rounded-lg p-4 h-96 flex flex-col">
-                    <div class="flex justify-between items-center text-xs text-zinc-500 border-b border-zinc-900 pb-2 mb-2">
-                        <span>system-console:~$ tail -f logs/application.log</span>
-                        <button @click="logs = []" class="hover:text-white transition">Clear Console</button>
-                    </div>
-                    
-                    <div class="flex-grow overflow-y-auto terminal-scroll text-xs font-mono space-y-1.5 pr-2" id="console-output">
-                        <!-- Welcome message -->
-                        <div class="text-zinc-500">&gt; Live stream initialized. Connected console updates will be outputted below.</div>
-                        <template x-for="log in logs">
-                            <div :class="{
-                                'text-zinc-300': log.level === 'info',
-                                'text-yellow-400': log.level === 'warn',
-                                'text-red-400 font-semibold': log.level === 'error',
-                                'text-emerald-400 font-bold': log.level === 'success'
-                            }">
-                                <span class="text-zinc-500" x-text="`[${log.time}]`"></span>
-                                <span x-text="`[${log.level.toUpperCase()}]: ${log.message}`"></span>
-                            </div>
-                        </template>
+                <div class="bg-card border border-card-border rounded-xl overflow-hidden shadow-lg">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead>
+                                <tr class="bg-zinc-950 border-b border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider text-[10px]">
+                                    <th class="p-4 w-48">วันเวลา</th>
+                                    <th class="p-4 w-36">ผู้ดำเนินงาน</th>
+                                    <th class="p-4">รายละเอียดการอัปเดต</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="log in auditLogs" :key="log.id">
+                                    <tr class="border-b border-zinc-800/40 hover:bg-white/[0.01]">
+                                        <td class="p-4 text-zinc-400 text-[11px]" x-text="formatDate(log.timestamp)"></td>
+                                        <td class="p-4 font-bold text-purple-400 text-[11px]" x-text="log.admin_user"></td>
+                                        <td class="p-4 text-zinc-200 text-[11px]" x-text="log.action"></td>
+                                    </tr>
+                                </template>
+                                <template x-if="auditLogs.length === 0">
+                                    <tr><td colspan="3" class="p-8 text-center text-zinc-500 text-sm">ยังไม่มีประวัติการอัปเดต</td></tr>
+                                </template>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-[#030014]/85 border-t border-white/5 py-5 text-center text-xs text-zinc-500 relative z-10">
+            <p>© 2026 checkorder Admin Panel. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <!-- ==================== EDIT ORDER MODAL ==================== -->
+    <div x-show="editModalOpen" class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 backdrop-blur-sm" x-cloak @click.self="editModalOpen = false">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-5" @click.stop>
+            <div class="border-b border-zinc-800 pb-3">
+                <h3 class="text-lg font-bold text-white">แก้ไขออเดอร์ #<span x-text="selectedOrder.id"></span></h3>
+                <p class="text-xs text-zinc-400">ปรับสถานะ เวลานับถอยหลัง และลำดับคิว</p>
+            </div>
+
+            <form @submit.prevent="saveOrderEdit()" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">สถานะสินค้า</label>
+                    <select x-model="selectedOrder.queue_status" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white">
+                        <option value="Pending">รอดำเนินการ (Pending)</option>
+                        <option value="Processing">กำลังดำเนินการ (Processing)</option>
+                        <option value="Completed">จัดส่งสำเร็จ (Completed)</option>
+                        <option value="Failed">จัดส่งไม่สำเร็จ (Failed)</option>
+                        <option value="Cancelled">ยกเลิก (Cancelled)</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">ปรับเวลารอสินค้า (นาที)</label>
+                        <input type="number" x-model="selectedOrder.override_minutes" placeholder="90" min="1" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white">
+                        <span class="text-[10px] text-zinc-500 mt-1 block">ตั้งค่าใหม่เป็น X นาทีนับจากตอนนี้</span>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">ลำดับคิว (Position)</label>
+                        <input type="number" x-model="selectedOrder.queue_position" min="0" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" @click="editModalOpen = false" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold py-2 px-5 rounded-lg text-xs transition">ยกเลิก</button>
+                    <button type="submit" class="bg-primary hover:opacity-90 text-white font-semibold py-2 px-5 rounded-lg text-xs transition">บันทึกการแก้ไข</button>
+                </div>
+            </form>
         </div>
+    </div>
 
-    </main>
-
-    <!-- Footer -->
-    <footer class="bg-[#030014]/85 border-t border-white/5 py-6 text-center text-xs text-zinc-500 relative z-10">
-        <p>© 2026 checkorder Control Panel. All rights reserved. • System Admin Tool</p>
-    </footer>
+    <!-- ==================== TOAST NOTIFICATION ==================== -->
+    <div x-show="toast.show" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-4"
+        class="fixed bottom-6 right-6 z-[60] max-w-sm" x-cloak>
+        <div class="rounded-xl p-4 border shadow-2xl text-sm font-semibold flex items-center gap-3"
+            :class="toast.type === 'success' ? 'bg-emerald-950 border-emerald-500/30 text-emerald-300' : 'bg-rose-950 border-rose-500/30 text-rose-300'">
+            <svg x-show="toast.type === 'success'" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+            <svg x-show="toast.type === 'error'" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            <span x-text="toast.message"></span>
+        </div>
+    </div>
 
     <script>
         function adminDashboard() {
             return {
-                stats: {
-                    uptime: '0s',
-                    activeConcurrentTasks: 0,
-                    isGlobalKillSwitchActive: false,
-                    memoryUsage: null
+                // Auth state
+                authenticated: !!localStorage.getItem('admin_token'),
+                adminUsername: localStorage.getItem('admin_username') || '',
+                authMode: 'login',
+                authError: '',
+                loginForm: { username: '', password: '' },
+                registerForm: { username: '', password: '' },
+
+                // Dashboard state
+                currentTab: 'overview',
+                tabs: [
+                    { id: 'overview', label: 'แดชบอร์ดภาพรวม' },
+                    { id: 'orders', label: 'จัดการออเดอร์' },
+                    { id: 'settings', label: 'ตั้งค่าระบบ' },
+                    { id: 'audit', label: 'ประวัติการอัปเดต' }
+                ],
+                statsPeriod: 'daily',
+                stats: { uptime: '0s', activeConcurrentTasks: 0, isGlobalKillSwitchActive: false, memoryUsage: null },
+                dashboardStats: {
+                    daily: { processing: 0, completed: 0, failed: 0, cancelled: 0 },
+                    weekly: { processing: 0, completed: 0, failed: 0, cancelled: 0 },
+                    monthly: { processing: 0, completed: 0, failed: 0, cancelled: 0 }
                 },
-                taskForm: {
-                    target_url: 'https://thewestern.rdcw.xyz/api/checkout-mock',
-                    variant_id: '',
-                    quantity: 1,
-                    execution_time: ''
-                },
+
+                // Orders state
+                orders: [],
+                editModalOpen: false,
+                selectedOrder: { id: null, queue_status: '', override_minutes: '', queue_position: 0 },
+
+                // Settings state
+                settingsForm: { is_queue_active: true, closed_message: '' },
+                profileForm: { newUsername: '', newPassword: '' },
+                newAdminForm: { username: '', password: '' },
+
+                // Audit state
+                auditLogs: [],
+
+                // Task scheduler
+                taskForm: { target_url: 'https://thewestern.rdcw.xyz/api/checkout-mock', variant_id: '', quantity: 1, execution_time: '' },
+
+                // SSE & Logs
                 logs: [],
-                sseConnected: false,
                 sseSource: null,
+
+                // Toast notifications
+                toast: { show: false, message: '', type: 'success' },
+
+                // Countdown ticker
+                currentTime: Date.now(),
+                countdownInterval: null,
 
                 init() {
                     this.initStars();
-                    this.fetchStats();
-                    this.connectSSE();
-                    
-                    // Poll stats every 2 seconds
-                    setInterval(() => this.fetchStats(), 2000);
+                    if (this.authenticated) {
+                        this.onLoginSuccess();
+                    }
+                    // Tick countdown every second
+                    this.countdownInterval = setInterval(() => { this.currentTime = Date.now(); }, 1000);
                 },
 
-                initStars() {
-                    const canvas = document.getElementById('background');
-                    if (canvas) {
-                        const ctx = canvas.getContext('2d');
-                        let width = canvas.width = window.innerWidth;
-                        let height = canvas.height = window.innerHeight;
+                // ====== AUTH METHODS ======
+                getHeaders() {
+                    return {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+                    };
+                },
 
-                        window.addEventListener('resize', () => {
-                            width = canvas.width = window.innerWidth;
-                            height = canvas.height = window.innerHeight;
+                async handleLogin() {
+                    this.authError = '';
+                    try {
+                        const res = await fetch('/api/admin/login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(this.loginForm)
                         });
-
-                        const particles = [];
-                        for (let i = 0; i < 40; i++) {
-                            particles.push({
-                                x: Math.random() * width,
-                                y: Math.random() * height,
-                                radius: Math.random() * 1.2 + 0.4,
-                                vx: Math.random() * 0.15 - 0.075,
-                                vy: Math.random() * 0.15 - 0.075,
-                                alpha: Math.random() * 0.4 + 0.1
-                            });
+                        const data = await res.json();
+                        if (data.success) {
+                            localStorage.setItem('admin_token', data.token);
+                            localStorage.setItem('admin_username', data.username);
+                            this.authenticated = true;
+                            this.adminUsername = data.username;
+                            this.loginForm = { username: '', password: '' };
+                            this.onLoginSuccess();
+                        } else {
+                            this.authError = data.message;
                         }
-
-                        function animate() {
-                            ctx.clearRect(0, 0, width, height);
-                            particles.forEach(p => {
-                                p.x += p.vx;
-                                p.y += p.vy;
-                                if (p.x < 0 || p.x > width) p.vx *= -1;
-                                if (p.y < 0 || p.y > height) p.vy *= -1;
-                                ctx.beginPath();
-                                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                                ctx.fillStyle = `rgba(139, 92, 246, ${p.alpha})`;
-                                ctx.fill();
-                            });
-                            requestAnimationFrame(animate);
-                        }
-                        animate();
+                    } catch (e) {
+                        this.authError = 'เครือข่ายขัดข้อง ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้';
                     }
                 },
 
+                async handleRegister() {
+                    this.authError = '';
+                    try {
+                        const res = await fetch('/api/admin/register', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(this.registerForm)
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            this.showToast(data.message, 'success');
+                            this.authMode = 'login';
+                            this.registerForm = { username: '', password: '' };
+                        } else {
+                            this.authError = data.message;
+                        }
+                    } catch (e) {
+                        this.authError = 'เครือข่ายขัดข้อง';
+                    }
+                },
+
+                handleLogout() {
+                    localStorage.removeItem('admin_token');
+                    localStorage.removeItem('admin_username');
+                    this.authenticated = false;
+                    this.adminUsername = '';
+                    if (this.sseSource) this.sseSource.close();
+                },
+
+                onLoginSuccess() {
+                    this.fetchStats();
+                    this.fetchDashboardStats();
+                    this.fetchOrders();
+                    this.fetchSystemSettings();
+                    this.fetchAuditLogs();
+                    this.connectSSE();
+
+                    setInterval(() => {
+                        if (this.authenticated) {
+                            this.fetchStats();
+                        }
+                    }, 5000);
+
+                    setInterval(() => {
+                        if (this.authenticated) {
+                            this.fetchDashboardStats();
+                            this.fetchOrders();
+                        }
+                    }, 10000);
+                },
+
+                // ====== DATA FETCH METHODS ======
                 async fetchStats() {
                     try {
-                        const response = await fetch('/api/admin/system-stats');
-                        if (response.ok) {
-                            const result = await response.json();
-                            if (result.success) {
-                                this.stats = result.data;
-                            }
+                        const res = await fetch('/api/admin/system-stats');
+                        if (res.ok) {
+                            const result = await res.json();
+                            if (result.success) this.stats = result.data;
                         }
-                    } catch (err) {
-                        console.error('Failed to fetch system stats:', err);
-                    }
+                    } catch (e) { }
                 },
 
+                async fetchDashboardStats() {
+                    try {
+                        const res = await fetch('/api/admin/dashboard-stats', { headers: this.getHeaders() });
+                        if (res.ok) {
+                            const result = await res.json();
+                            if (result.success) this.dashboardStats = result.data;
+                        }
+                    } catch (e) { }
+                },
+
+                async fetchOrders() {
+                    try {
+                        const res = await fetch('/api/admin/orders', { headers: this.getHeaders() });
+                        if (res.ok) {
+                            const result = await res.json();
+                            if (result.success) this.orders = result.data;
+                        }
+                    } catch (e) { }
+                },
+
+                async fetchSystemSettings() {
+                    try {
+                        const res = await fetch('/api/settings');
+                        if (res.ok) {
+                            const result = await res.json();
+                            if (result.success) {
+                                this.settingsForm.is_queue_active = result.data.is_queue_active;
+                                this.settingsForm.closed_message = result.data.closed_message;
+                            }
+                        }
+                    } catch (e) { }
+                },
+
+                async fetchAuditLogs() {
+                    try {
+                        const res = await fetch('/api/admin/audit-logs', { headers: this.getHeaders() });
+                        if (res.ok) {
+                            const result = await res.json();
+                            if (result.success) this.auditLogs = result.data;
+                        }
+                    } catch (e) { }
+                },
+
+                // ====== SSE ======
                 connectSSE() {
-                    if (this.sseSource) {
-                        this.sseSource.close();
-                    }
-
+                    if (this.sseSource) this.sseSource.close();
                     this.sseSource = new EventSource('/api/admin/bot-stream');
-
-                    this.sseSource.onopen = () => {
-                        this.sseConnected = true;
-                        this.addLocalLog('info', 'เชื่อมต่อกับ SSE Live Stream สำเร็จ');
-                    };
-
-                    this.sseSource.onerror = (err) => {
-                        console.error('SSE Error:', err);
-                        this.sseConnected = false;
-                        this.addLocalLog('error', 'การเชื่อมต่อ SSE ผิดพลาด กำลังเชื่อมต่อใหม่...');
-                    };
 
                     this.sseSource.onmessage = (event) => {
                         try {
                             const data = JSON.parse(event.data);
-                            const timeStr = new Date().toLocaleTimeString('th-TH');
-                            
-                            // Map event messages to console outputs
                             if (data.event === 'connected') {
                                 this.addLocalLog('info', data.message);
                             } else {
                                 const level = data.status === 'Success' ? 'success' : (data.status === 'Blocked' ? 'error' : 'info');
-                                const message = `Task #${data.taskId} [Account: ${data.accountUsername}] - Status: ${data.status} ${data.extraInfo ? '(' + data.extraInfo + ')' : ''}`;
-                                this.logs.push({
-                                    time: timeStr,
-                                    level,
-                                    message
-                                });
-                                this.scrollToBottom();
+                                const message = `Task #${data.taskId} [${data.accountUsername}] - ${data.status} ${data.extraInfo ? '(' + data.extraInfo + ')' : ''}`;
+                                this.addLocalLog(level, message);
                             }
-                        } catch (e) {
-                            console.error('Failed parsing SSE payload:', e);
-                        }
+                        } catch (e) { }
                     };
                 },
 
                 addLocalLog(level, message) {
                     const timeStr = new Date().toLocaleTimeString('th-TH');
-                    this.logs.push({
-                        time: timeStr,
-                        level,
-                        message
-                    });
+                    this.logs.push({ time: timeStr, level, message });
+                    if (this.logs.length > 200) this.logs = this.logs.slice(-100);
                     this.scrollToBottom();
                 },
 
@@ -370,13 +772,12 @@
                     }, 50);
                 },
 
+                // ====== ACTION METHODS ======
                 async createTask() {
                     try {
-                        const response = await fetch('/api/admin/tasks', {
+                        const res = await fetch('/api/admin/tasks', {
                             method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
+                            headers: this.getHeaders(),
                             body: JSON.stringify({
                                 target_url: this.taskForm.target_url,
                                 variant_id: this.taskForm.variant_id,
@@ -384,44 +785,191 @@
                                 execution_time: new Date(this.taskForm.execution_time).toISOString()
                             })
                         });
-
-                        const result = await response.json();
+                        const result = await res.json();
                         if (result.success) {
-                            this.addLocalLog('success', `ตารางงานรันบอทถูกสร้างและพร้อมเริ่มทำงาน (Task ID: ${result.data.id})`);
-                            // Reset variant field
+                            this.addLocalLog('success', `ตารางงานบอทถูกสร้าง (Task ID: ${result.data.id})`);
                             this.taskForm.variant_id = '';
-                        } else {
-                            this.addLocalLog('error', `สร้างตารางงานล้มเหลว: ${result.message}`);
+                            this.showToast('สร้างตารางรันบอทเรียบร้อย', 'success');
                         }
-                    } catch (err) {
-                        this.addLocalLog('error', `เครือข่ายผิดพลาด: ไม่สามารถสื่อสารเพื่อสร้างตารางงานได้`);
+                    } catch (e) {
+                        this.showToast('สร้างตารางรันบอทล้มเหลว', 'error');
                     }
                 },
 
                 async toggleKillSwitch(activate) {
                     try {
-                        const response = await fetch('/api/admin/kill-switch', {
+                        const res = await fetch('/api/admin/kill-switch', {
                             method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
+                            headers: this.getHeaders(),
                             body: JSON.stringify({ active: activate })
                         });
-
-                        const result = await response.json();
+                        const result = await res.json();
                         if (result.success) {
                             this.stats.isGlobalKillSwitchActive = result.isGlobalKillSwitchActive;
-                            const statusMsg = result.isGlobalKillSwitchActive 
-                                ? 'เปิดใช้งานสวิตช์ภัยพิบัติ (Emergency Abort) สำเร็จ - ทุกคิวงานและคำขอเซิร์ฟเวอร์ถูกยกเลิกแล้ว' 
-                                : 'ยกเลิกสวิตช์ภัยพิบัติแล้ว - บอทกลับสู่สถานะพร้อมทำงานตามตาราง';
-                            this.addLocalLog(result.isGlobalKillSwitchActive ? 'error' : 'info', statusMsg);
                         }
-                    } catch (err) {
-                        this.addLocalLog('error', 'ล้มเหลวในการส่งคำขอ Toggle Kill Switch ไปยังเซิร์ฟเวอร์');
+                    } catch (e) { }
+                },
+
+                async saveSystemSettings() {
+                    try {
+                        const res = await fetch('/api/admin/settings', {
+                            method: 'POST',
+                            headers: this.getHeaders(),
+                            body: JSON.stringify(this.settingsForm)
+                        });
+                        const result = await res.json();
+                        if (result.success) {
+                            this.showToast('บันทึกการตั้งค่าระบบเรียบร้อย!', 'success');
+                            this.fetchAuditLogs();
+                        }
+                    } catch (e) {
+                        this.showToast('บันทึกตั้งค่าระบบล้มเหลว', 'error');
                     }
+                },
+
+                async updateProfile() {
+                    try {
+                        const res = await fetch('/api/admin/update-profile', {
+                            method: 'POST',
+                            headers: this.getHeaders(),
+                            body: JSON.stringify(this.profileForm)
+                        });
+                        const result = await res.json();
+                        if (result.success) {
+                            this.showToast('อัปเดตข้อมูลบัญชีสำเร็จ!', 'success');
+                            this.adminUsername = result.username;
+                            localStorage.setItem('admin_username', result.username);
+                            if (result.token) localStorage.setItem('admin_token', result.token);
+                            this.profileForm = { newUsername: '', newPassword: '' };
+                            this.fetchAuditLogs();
+                        } else {
+                            this.showToast(result.message, 'error');
+                        }
+                    } catch (e) {
+                        this.showToast('แก้ไขโปรไฟล์ล้มเหลว', 'error');
+                    }
+                },
+
+                async registerNewAdmin() {
+                    try {
+                        const res = await fetch('/api/admin/register', {
+                            method: 'POST',
+                            headers: this.getHeaders(),
+                            body: JSON.stringify(this.newAdminForm)
+                        });
+                        const result = await res.json();
+                        if (result.success) {
+                            this.showToast(result.message, 'success');
+                            this.newAdminForm = { username: '', password: '' };
+                            this.fetchAuditLogs();
+                        } else {
+                            this.showToast(result.message, 'error');
+                        }
+                    } catch (e) {
+                        this.showToast('เพิ่มผู้ดูแลคนใหม่ล้มเหลว', 'error');
+                    }
+                },
+
+                openEditModal(order) {
+                    this.selectedOrder = {
+                        id: order.id,
+                        queue_status: order.queue_status,
+                        override_minutes: '',
+                        queue_position: order.queue_position
+                    };
+                    this.editModalOpen = true;
+                },
+
+                async saveOrderEdit() {
+                    try {
+                        const res = await fetch(`/api/admin/orders/${this.selectedOrder.id}`, {
+                            method: 'PUT',
+                            headers: this.getHeaders(),
+                            body: JSON.stringify(this.selectedOrder)
+                        });
+                        const result = await res.json();
+                        if (result.success) {
+                            this.editModalOpen = false;
+                            this.showToast('อัปเดตออเดอร์สำเร็จ', 'success');
+                            this.fetchOrders();
+                            this.fetchDashboardStats();
+                            this.fetchAuditLogs();
+                        } else {
+                            this.showToast(result.message, 'error');
+                        }
+                    } catch (e) {
+                        this.showToast('บันทึกออเดอร์ล้มเหลว', 'error');
+                    }
+                },
+
+                async deleteOrder(id) {
+                    if (!confirm('ยืนยันที่จะลบออเดอร์นี้ออกจากระบบคิว?')) return;
+                    try {
+                        const res = await fetch(`/api/admin/orders/${id}`, {
+                            method: 'DELETE',
+                            headers: this.getHeaders()
+                        });
+                        const result = await res.json();
+                        if (result.success) {
+                            this.showToast('ลบออเดอร์เรียบร้อย', 'success');
+                            this.fetchOrders();
+                            this.fetchDashboardStats();
+                            this.fetchAuditLogs();
+                        }
+                    } catch (e) { }
+                },
+
+                // ====== HELPER METHODS ======
+                getCountdownLabel(order) {
+                    if (['Completed', 'Failed', 'Cancelled'].includes(order.queue_status)) return '-';
+                    if (!order.wait_time_target) return 'ไม่มีเวลากำหนด';
+
+                    const target = new Date(order.wait_time_target).getTime();
+                    const diff = target - this.currentTime;
+                    if (diff <= 0) return 'ครบกำหนดแล้ว';
+
+                    const hrs = Math.floor(diff / 3600000);
+                    const mins = Math.floor((diff % 3600000) / 60000);
+                    const secs = Math.floor((diff % 60000) / 1000);
+                    if (hrs > 0) return `${hrs}:${mins < 10 ? '0' + mins : mins}:${secs < 10 ? '0' + secs : secs}`;
+                    return `${mins}:${secs < 10 ? '0' + secs : secs}`;
+                },
+
+                getQueueLabel(status) {
+                    return { Pending: 'รอดำเนินการ', Processing: 'กำลังดำเนินการ', Completed: 'จัดส่งสำเร็จ', Failed: 'จัดส่งไม่สำเร็จ', Cancelled: 'ยกเลิกรายการ' }[status] || status;
+                },
+
+                formatDate(dateStr) {
+                    if (!dateStr) return '-';
+                    return new Date(dateStr).toLocaleString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                },
+
+                showToast(message, type = 'success') {
+                    this.toast = { show: true, message, type };
+                    setTimeout(() => { this.toast.show = false; }, 3500);
+                },
+
+                // ====== STARS BACKGROUND ======
+                initStars() {
+                    const canvas = document.getElementById('background');
+                    if (!canvas) return;
+                    const ctx = canvas.getContext('2d');
+                    let width = canvas.width = window.innerWidth;
+                    let height = canvas.height = window.innerHeight;
+                    window.addEventListener('resize', () => { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; });
+                    const particles = [];
+                    for (let i = 0; i < 40; i++) {
+                        particles.push({ x: Math.random() * width, y: Math.random() * height, radius: Math.random() * 1.2 + 0.4, vx: Math.random() * 0.15 - 0.075, vy: Math.random() * 0.15 - 0.075, alpha: Math.random() * 0.4 + 0.1 });
+                    }
+                    (function animate() {
+                        ctx.clearRect(0, 0, width, height);
+                        particles.forEach(p => { p.x += p.vx; p.y += p.vy; if (p.x < 0 || p.x > width) p.vx *= -1; if (p.y < 0 || p.y > height) p.vy *= -1; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fillStyle = `rgba(139, 92, 246, ${p.alpha})`; ctx.fill(); });
+                        requestAnimationFrame(animate);
+                    })();
                 }
             };
         }
     </script>
 </body>
+
 </html>

@@ -5,6 +5,8 @@ const path = require('path');
 const db = require('./database');
 const axios = require('axios');
 const winston = require('winston');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 require('winston-daily-rotate-file');
 
 const app = express();
@@ -12,6 +14,7 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'checkorder-admin-secret-2026';
 
 // ==========================================
 // 5. Developer Centralized Logging (Winston Setup)
@@ -57,11 +60,44 @@ app.get('/admin', (req, res) => {
 // Enable CORS for cross-origin testing
 app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    if (req.method === 'OPTIONS') return res.sendStatus(200);
     next();
 });
 
-// Helper: Broadcast log to database and WebSockets (retains compatibility with old frontend logs)
+// ==========================================
+// AUTH MIDDLEWARE
+// ==========================================
+function authMiddleware(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ success: false, message: 'ไม่ได้รับอนุญาต กรุณาเข้าสู่ระบบ' });
+    }
+    const token = authHeader.split(' ')[1];
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.adminUser = decoded; // { id, username }
+        next();
+    } catch (err) {
+        return res.status(401).json({ success: false, message: 'Token หมดอายุหรือไม่ถูกต้อง' });
+    }
+}
+
+// ==========================================
+// AUDIT LOG HELPER
+// ==========================================
+function addAuditLog(admin_user, action) {
+    db.run(
+        "INSERT INTO audit_logs (admin_user, action) VALUES (?, ?)",
+        [admin_user, action],
+        (err) => {
+            if (err) logger.error(`Failed to write audit log: ${err.message}`);
+        }
+    );
+}
+
+// Helper: Broadcast log to database and WebSockets
 function broadcastLog(username, level, message) {
     const logEntry = {
         username,
@@ -70,7 +106,6 @@ function broadcastLog(username, level, message) {
         timestamp: new Date().toISOString()
     };
     
-    // Save log to SQLite DB
     db.run(
         "INSERT INTO logs (username, level, message) VALUES (?, ?, ?)",
         [username, level, message],
@@ -79,7 +114,6 @@ function broadcastLog(username, level, message) {
         }
     );
 
-    // Send log to connected dashboard sockets
     const socketMsg = JSON.stringify({ type: 'log', data: logEntry });
     wss.clients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) {
@@ -87,7 +121,6 @@ function broadcastLog(username, level, message) {
         }
     });
 
-    // Also write to our Winston logger
     const logMsg = `[User: ${username || 'System'}] ${message}`;
     if (level === 'error') {
         logger.error(logMsg);
@@ -117,37 +150,400 @@ app.get('/api/admin/bot-stream', (req, res) => {
         sseClients = sseClients.filter(client => client !== res);
     });
 
-    // Send initial connection notice
     res.write(`data: ${JSON.stringify({ event: 'connected', message: 'SSE Connection Established' })}\n\n`);
 });
 
-// Broadcast status update helper to SSE clients
 function broadcastSSEStatus(taskId, accountUsername, status, extraInfo = '') {
     const payload = {
         taskId,
         accountUsername,
-        status, // 'Standby', 'In Queue', 'Success', 'Blocked', etc.
+        status,
         extraInfo,
         timestamp: new Date().toISOString()
     };
-    
     sseClients.forEach(client => {
         client.write(`data: ${JSON.stringify(payload)}\n\n`);
     });
 }
 
 // ==========================================
+// AUTH ENDPOINTS
+// ==========================================
+app.post('/api/admin/login', (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({ success: false, message: 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน' });
+    }
+
+    db.get("SELECT * FROM admins WHERE username = ?", [username], (err, admin) => {
+        if (err) {
+            logger.error(`Login DB error: ${err.message}`);
+            return res.status(500).json({ success: false, message: 'Database error' });
+        }
+        if (!admin) {
+            return res.status(401).json({ success: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
+        }
+
+        const validPassword = bcrypt.compareSync(password, admin.password_hash);
+        if (!validPassword) {
+            return res.status(401).json({ success: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
+        }
+
+        const token = jwt.sign(
+            { id: admin.id, username: admin.username },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+
+        logger.info(`Admin "${admin.username}" logged in successfully.`);
+        addAuditLog(admin.username, `เข้าสู่ระบบสำเร็จ`);
+
+        res.json({
+            success: true,
+            token,
+            username: admin.username
+        });
+    });
+});
+
+app.post('/api/admin/register', (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({ success: false, message: 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน' });
+    }
+    if (password.length < 4) {
+        return res.status(400).json({ success: false, message: 'รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร' });
+    }
+
+    const hash = bcrypt.hashSync(password, 10);
+    db.run(
+        "INSERT INTO admins (username, password_hash) VALUES (?, ?)",
+        [username, hash],
+        function(err) {
+            if (err) {
+                if (err.message.includes('UNIQUE constraint failed')) {
+                    return res.status(409).json({ success: false, message: 'ชื่อผู้ใช้นี้ถูกใช้งานแล้ว' });
+                }
+                logger.error(`Register error: ${err.message}`);
+                return res.status(500).json({ success: false, message: 'Database error' });
+            }
+
+            logger.info(`New admin registered: ${username}`);
+            addAuditLog(username, `สมัครสมาชิกผู้ดูแลระบบคนใหม่: ${username}`);
+
+            res.json({ success: true, message: `สมัครสมาชิกสำเร็จ! ยินดีต้อนรับ ${username}` });
+        }
+    );
+});
+
+app.post('/api/admin/update-profile', authMiddleware, (req, res) => {
+    const { newUsername, newPassword } = req.body;
+    const currentAdminId = req.adminUser.id;
+    const currentAdminName = req.adminUser.username;
+
+    if (!newUsername && !newPassword) {
+        return res.status(400).json({ success: false, message: 'ไม่มีข้อมูลที่ต้องการอัปเดต' });
+    }
+
+    const updates = [];
+    const params = [];
+
+    if (newUsername && newUsername.trim()) {
+        updates.push("username = ?");
+        params.push(newUsername.trim());
+    }
+    if (newPassword && newPassword.trim()) {
+        const hash = bcrypt.hashSync(newPassword.trim(), 10);
+        updates.push("password_hash = ?");
+        params.push(hash);
+    }
+
+    params.push(currentAdminId);
+
+    db.run(
+        `UPDATE admins SET ${updates.join(', ')} WHERE id = ?`,
+        params,
+        function(err) {
+            if (err) {
+                if (err.message.includes('UNIQUE constraint failed')) {
+                    return res.status(409).json({ success: false, message: 'ชื่อผู้ใช้นี้ถูกใช้งานแล้ว' });
+                }
+                logger.error(`Update profile error: ${err.message}`);
+                return res.status(500).json({ success: false, message: 'Database error' });
+            }
+
+            const finalUsername = (newUsername && newUsername.trim()) ? newUsername.trim() : currentAdminName;
+            
+            // Generate new token with updated username
+            const newToken = jwt.sign(
+                { id: currentAdminId, username: finalUsername },
+                JWT_SECRET,
+                { expiresIn: '24h' }
+            );
+
+            const changes = [];
+            if (newUsername && newUsername.trim()) changes.push(`เปลี่ยนชื่อผู้ใช้เป็น "${finalUsername}"`);
+            if (newPassword && newPassword.trim()) changes.push(`เปลี่ยนรหัสผ่าน`);
+            
+            addAuditLog(currentAdminName, `อัปเดตโปรไฟล์: ${changes.join(', ')}`);
+            logger.info(`Admin "${currentAdminName}" updated profile: ${changes.join(', ')}`);
+
+            res.json({
+                success: true,
+                username: finalUsername,
+                token: newToken
+            });
+        }
+    );
+});
+
+// ==========================================
+// DASHBOARD STATS ENDPOINT
+// ==========================================
+app.get('/api/admin/dashboard-stats', authMiddleware, (req, res) => {
+    const queries = {
+        daily: "WHERE date(last_updated) = date('now')",
+        weekly: "WHERE last_updated >= datetime('now', '-7 days')",
+        monthly: "WHERE last_updated >= datetime('now', '-30 days')"
+    };
+
+    const result = {
+        daily: { processing: 0, completed: 0, failed: 0, cancelled: 0 },
+        weekly: { processing: 0, completed: 0, failed: 0, cancelled: 0 },
+        monthly: { processing: 0, completed: 0, failed: 0, cancelled: 0 }
+    };
+
+    let completed = 0;
+    const periods = Object.keys(queries);
+
+    periods.forEach(period => {
+        db.all(
+            `SELECT queue_status, COUNT(*) as count FROM orders ${queries[period]} GROUP BY queue_status`,
+            [],
+            (err, rows) => {
+                if (!err && rows) {
+                    rows.forEach(row => {
+                        const status = row.queue_status;
+                        if (status === 'Processing' || status === 'Pending') {
+                            result[period].processing += row.count;
+                        } else if (status === 'Completed') {
+                            result[period].completed = row.count;
+                        } else if (status === 'Failed') {
+                            result[period].failed = row.count;
+                        } else if (status === 'Cancelled') {
+                            result[period].cancelled = row.count;
+                        }
+                    });
+                }
+                completed++;
+                if (completed === periods.length) {
+                    res.json({ success: true, data: result });
+                }
+            }
+        );
+    });
+});
+
+// ==========================================
+// ORDERS MANAGEMENT ENDPOINTS
+// ==========================================
+app.get('/api/admin/orders', authMiddleware, (req, res) => {
+    db.all(
+        "SELECT * FROM orders ORDER BY CASE WHEN queue_status IN ('Pending','Processing') THEN 0 ELSE 1 END, queue_position ASC, last_updated DESC",
+        [],
+        (err, rows) => {
+            if (err) {
+                logger.error(`Fetch orders error: ${err.message}`);
+                return res.status(500).json({ success: false, message: 'Database error' });
+            }
+            res.json({ success: true, data: rows || [] });
+        }
+    );
+});
+
+app.put('/api/admin/orders/:id', authMiddleware, (req, res) => {
+    const orderId = req.params.id;
+    const { queue_status, override_minutes, queue_position, notes } = req.body;
+    const adminName = req.adminUser.username;
+    const now = new Date().toISOString();
+
+    // First, get the current order
+    db.get("SELECT * FROM orders WHERE id = ?", [orderId], (err, order) => {
+        if (err || !order) {
+            return res.status(404).json({ success: false, message: 'ไม่พบออเดอร์ดังกล่าว' });
+        }
+
+        const updates = [];
+        const params = [];
+        const auditChanges = [];
+
+        // Update queue_status
+        if (queue_status && queue_status !== order.queue_status) {
+            updates.push("queue_status = ?");
+            params.push(queue_status);
+            auditChanges.push(`สถานะ: ${order.queue_status} → ${queue_status}`);
+
+            // If completed/failed/cancelled, set position to 0
+            if (['Completed', 'Failed', 'Cancelled'].includes(queue_status)) {
+                updates.push("queue_position = 0");
+                // Clear wait target
+                updates.push("wait_time_target = NULL");
+            }
+        }
+
+        // Override wait time (add custom minutes from now)
+        if (override_minutes && parseInt(override_minutes) > 0) {
+            const mins = parseInt(override_minutes);
+            const newTarget = new Date(Date.now() + mins * 60 * 1000).toISOString();
+            updates.push("wait_time_target = ?");
+            params.push(newTarget);
+            auditChanges.push(`เวลารอสินค้า: ปรับเป็น ${mins} นาที`);
+        }
+
+        // Update queue position
+        if (queue_position !== undefined && queue_position !== '' && parseInt(queue_position) !== order.queue_position) {
+            updates.push("queue_position = ?");
+            params.push(parseInt(queue_position));
+            auditChanges.push(`ลำดับคิว: ${order.queue_position} → ${queue_position}`);
+        }
+
+        // Update notes
+        if (notes !== undefined && notes !== order.notes) {
+            updates.push("notes = ?");
+            params.push(notes);
+        }
+
+        if (updates.length === 0) {
+            return res.json({ success: true, message: 'ไม่มีการเปลี่ยนแปลง' });
+        }
+
+        // Always update last_updated
+        updates.push("last_updated = ?");
+        params.push(now);
+        params.push(orderId);
+
+        db.run(
+            `UPDATE orders SET ${updates.join(', ')} WHERE id = ?`,
+            params,
+            function(err) {
+                if (err) {
+                    logger.error(`Update order error: ${err.message}`);
+                    return res.status(500).json({ success: false, message: 'Database error' });
+                }
+
+                const auditMsg = `แก้ไขออเดอร์ #${orderId} (${order.product_name}): ${auditChanges.join(', ')}`;
+                addAuditLog(adminName, auditMsg);
+                logger.info(`[Admin: ${adminName}] ${auditMsg}`);
+
+                res.json({ success: true, message: 'อัปเดตออเดอร์สำเร็จ' });
+            }
+        );
+    });
+});
+
+app.delete('/api/admin/orders/:id', authMiddleware, (req, res) => {
+    const orderId = req.params.id;
+    const adminName = req.adminUser.username;
+
+    db.get("SELECT * FROM orders WHERE id = ?", [orderId], (err, order) => {
+        if (err || !order) {
+            return res.status(404).json({ success: false, message: 'ไม่พบออเดอร์ดังกล่าว' });
+        }
+
+        db.run("DELETE FROM orders WHERE id = ?", [orderId], function(err) {
+            if (err) {
+                logger.error(`Delete order error: ${err.message}`);
+                return res.status(500).json({ success: false, message: 'Database error' });
+            }
+
+            // Re-sequence queue positions for remaining active orders
+            db.all(
+                "SELECT id FROM orders WHERE queue_status IN ('Pending', 'Processing') ORDER BY queue_position ASC",
+                [],
+                (err, remaining) => {
+                    if (!err && remaining) {
+                        remaining.forEach((row, index) => {
+                            db.run("UPDATE orders SET queue_position = ? WHERE id = ?", [index + 1, row.id]);
+                        });
+                    }
+                }
+            );
+
+            const auditMsg = `ลบออเดอร์ #${orderId} (${order.product_name}) ของ ${order.username} ออกจากระบบ`;
+            addAuditLog(adminName, auditMsg);
+            logger.info(`[Admin: ${adminName}] ${auditMsg}`);
+
+            res.json({ success: true, message: 'ลบออเดอร์เรียบร้อยแล้ว' });
+        });
+    });
+});
+
+// ==========================================
+// SYSTEM SETTINGS ENDPOINTS
+// ==========================================
+// Public endpoint - frontend checks this
+app.get('/api/settings', (req, res) => {
+    db.all("SELECT * FROM system_settings", [], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ success: false, message: 'Database error' });
+        }
+        const settings = {};
+        (rows || []).forEach(row => {
+            settings[row.key] = row.value;
+        });
+        res.json({
+            success: true,
+            data: {
+                is_queue_active: settings.is_queue_active === '1',
+                closed_message: settings.closed_message || 'ระบบปิดปรับปรุงชั่วคราว'
+            }
+        });
+    });
+});
+
+// Admin endpoint - save settings
+app.post('/api/admin/settings', authMiddleware, (req, res) => {
+    const { is_queue_active, closed_message } = req.body;
+    const adminName = req.adminUser.username;
+
+    const stmt = db.prepare("INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)");
+    stmt.run('is_queue_active', is_queue_active ? '1' : '0');
+    stmt.run('closed_message', closed_message || 'ระบบปิดปรับปรุงชั่วคราว');
+    stmt.finalize();
+
+    const statusText = is_queue_active ? 'เปิดให้บริการ' : 'ปิดให้บริการ';
+    addAuditLog(adminName, `เปลี่ยนแปลงตั้งค่าระบบ: ${statusText} (ข้อความ: ${closed_message})`);
+    logger.info(`[Admin: ${adminName}] System settings updated: queue=${statusText}`);
+
+    res.json({ success: true, message: 'บันทึกการตั้งค่าเรียบร้อย' });
+});
+
+// ==========================================
+// AUDIT LOGS ENDPOINT
+// ==========================================
+app.get('/api/admin/audit-logs', authMiddleware, (req, res) => {
+    db.all(
+        "SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 100",
+        [],
+        (err, rows) => {
+            if (err) {
+                return res.status(500).json({ success: false, message: 'Database error' });
+            }
+            res.json({ success: true, data: rows || [] });
+        }
+    );
+});
+
+// ==========================================
 // 6. Proxy & Session Management Pool
 // ==========================================
 const proxyPool = [
-    // Pre-populate with dummy proxy servers for rotation testing
     { host: 'proxy1.example.com', port: 8080, username: 'user1', password: 'pass1', failures: 0 },
     { host: 'proxy2.example.com', port: 3128, username: 'user2', password: 'pass2', failures: 0 },
     { host: 'proxy3.example.com', port: 8000, username: 'user3', password: 'pass3', failures: 0 }
 ];
 let currentProxyIndex = 0;
 
-// Rotate proxy helper
 function getNextProxy() {
     if (proxyPool.length === 0) return null;
     const proxy = proxyPool[currentProxyIndex];
@@ -159,7 +555,6 @@ function getNextProxy() {
 // 4. Notification Webhook Helper
 // ==========================================
 async function sendNotificationWebhook(status, details) {
-    // Add webhook URLs or placeholder config
     const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
     const telegramChatId = process.env.TELEGRAM_CHAT_ID;
     const lineNotifyToken = process.env.LINE_NOTIFY_TOKEN;
@@ -167,7 +562,6 @@ async function sendNotificationWebhook(status, details) {
     const message = `[Preorder Bot Alert] \nStatus: ${status}\nDetails: ${JSON.stringify(details, null, 2)}`;
     logger.info(`Sending webhook notification. Status: ${status}`);
 
-    // Post to Telegram if configured
     if (telegramBotToken && telegramChatId) {
         try {
             await axios.post(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
@@ -180,7 +574,6 @@ async function sendNotificationWebhook(status, details) {
         }
     }
 
-    // Post to LINE Notify if configured
     if (lineNotifyToken) {
         try {
             const params = new URLSearchParams();
@@ -202,7 +595,7 @@ async function sendNotificationWebhook(status, details) {
 // 7. Global Kill Switch
 // ==========================================
 let isGlobalKillSwitchActive = false;
-let activeAbortControllers = new Map(); // Map of taskId -> AbortController
+let activeAbortControllers = new Map();
 
 app.post('/api/admin/kill-switch', (req, res) => {
     const { active } = req.body;
@@ -210,7 +603,6 @@ app.post('/api/admin/kill-switch', (req, res) => {
 
     if (isGlobalKillSwitchActive) {
         logger.warn('GLOBAL KILL SWITCH ACTIVATED! Aborting all running tasks and fetch operations...');
-        // Abort all active fetch controllers
         for (const [taskId, controller] of activeAbortControllers.entries()) {
             controller.abort();
             logger.info(`Aborted task ID: ${taskId}`);
@@ -254,7 +646,6 @@ async function executeTaskForAccount(task, account, abortSignal) {
         logger.info(`Attempt ${attempt} for account ${username} using proxy ${proxy ? proxy.host : 'none'}`);
 
         try {
-            // Build axios configuration with proxy and abort signal
             const axiosConfig = {
                 timeout: 10000,
                 signal: abortSignal
@@ -271,23 +662,17 @@ async function executeTaskForAccount(task, account, abortSignal) {
                 };
             }
 
-            // Simulate preorder checkout post request
-            // Target URL is configured in the task details
             const targetUrl = task.target_url || 'https://thewestern.rdcw.xyz/api/checkout';
             
-            // For demo/simulation purpose, if the target proxy fails or we simulate failure:
             if (proxy && proxy.host === 'proxy1.example.com' && attempt === 1) {
-                // Simulate a 403 rate limit / Forbidden error to demonstrate proxy rotation
                 const err = new Error('Request failed with status code 403');
                 err.response = { status: 403 };
                 throw err;
             }
 
-            // Mock successful request
             logger.info(`Sending checkout post request to target: ${targetUrl}`);
             checkoutSuccess = true;
 
-            // Update database status
             db.run(
                 "UPDATE accounts SET queue_status = 'Completed', queue_position = 0, last_updated = ? WHERE username = ?",
                 [new Date().toISOString(), username]
@@ -296,7 +681,6 @@ async function executeTaskForAccount(task, account, abortSignal) {
             broadcastSSEStatus(taskId, username, 'Success', 'Preorder checkout succeeded');
             broadcastLog(username, 'success', `พรีออเดอร์สำเร็จ! สินค้า: Variant ${task.variant_id}, จำนวน: ${task.quantity}`);
             
-            // Webhook notification for Success
             sendNotificationWebhook('Success', {
                 username,
                 taskId,
@@ -307,20 +691,17 @@ async function executeTaskForAccount(task, account, abortSignal) {
         } catch (error) {
             logger.warn(`Checkout attempt ${attempt} failed for account ${username}: ${error.message}`);
             
-            // Check status codes for rotation
             if (error.response && (error.response.status === 403 || error.response.status === 429)) {
                 logger.warn(`Proxy ${proxy ? proxy.host : 'direct'} returned status code ${error.response.status}. Rotating proxy...`);
                 if (proxy) proxy.failures++;
             }
             
-            // Rotate proxy for next attempt
             proxy = getNextProxy();
 
             if (attempt >= maxAttempts) {
                 broadcastSSEStatus(taskId, username, 'Blocked', `Failed after ${maxAttempts} attempts`);
                 broadcastLog(username, 'error', `ไม่สามารถจองพรีออเดอร์ได้หลังจากพยายามครบ ${maxAttempts} ครั้ง`);
                 
-                // Webhook notification for Failure
                 sendNotificationWebhook('Failure', {
                     username,
                     taskId,
@@ -331,7 +712,6 @@ async function executeTaskForAccount(task, account, abortSignal) {
     }
 }
 
-// Concurrency queue runner
 async function processCheckoutInBatches(task, accounts, concurrencyLimit = 2) {
     const taskId = task.id;
     const controller = new AbortController();
@@ -348,18 +728,15 @@ async function processCheckoutInBatches(task, accounts, concurrencyLimit = 2) {
             break;
         }
 
-        // Fill slots up to limit
         while (queue.length > 0 && activePromises.length < concurrencyLimit) {
             const account = queue.shift();
             const promise = executeTaskForAccount(task, account, controller.signal).finally(() => {
-                // Remove self from active list when finished
                 const index = activePromises.indexOf(promise);
                 if (index > -1) activePromises.splice(index, 1);
             });
             activePromises.push(promise);
         }
 
-        // Wait for at least one slot to clear
         if (activePromises.length > 0) {
             await Promise.race(activePromises);
         }
@@ -370,14 +747,12 @@ async function processCheckoutInBatches(task, accounts, concurrencyLimit = 2) {
     logger.info(`Task ID ${taskId} processing finished.`);
 }
 
-// Helper to trigger preorder bot sequence
 function triggerPreorderBot(task) {
     const taskId = task.id;
     logger.info(`Preorder task trigger activated for Task ID: ${taskId}`);
 
     db.run("UPDATE tasks SET status = 'running' WHERE id = ?", [taskId]);
 
-    // Fetch active accounts from account slot pool
     db.all("SELECT * FROM accounts WHERE status = 'active'", [], (err, accounts) => {
         if (err) {
             logger.error(`Failed to load accounts for task: ${err.message}`);
@@ -391,7 +766,6 @@ function triggerPreorderBot(task) {
             return;
         }
 
-        // Run batch checkout
         processCheckoutInBatches(task, accounts, 2);
     });
 }
@@ -399,14 +773,13 @@ function triggerPreorderBot(task) {
 // ==========================================
 // 1. Admin Task & Scheduler Module
 // ==========================================
-const scheduledTimers = new Map(); // task.id -> NodeJS.Timeout
+const scheduledTimers = new Map();
 
 function scheduleTask(task) {
     const now = Date.now();
     const targetTime = new Date(task.execution_time).getTime();
     const delay = targetTime - now;
 
-    // If there is an existing timer for this task, clear it
     if (scheduledTimers.has(task.id)) {
         clearTimeout(scheduledTimers.get(task.id));
         scheduledTimers.delete(task.id);
@@ -425,7 +798,6 @@ function scheduleTask(task) {
     }
 }
 
-// Reload pending tasks from SQLite database on startup
 function reloadScheduledTasks() {
     db.all("SELECT * FROM tasks WHERE status = 'pending'", [], (err, rows) => {
         if (err) {
@@ -439,7 +811,6 @@ function reloadScheduledTasks() {
     });
 }
 
-// Endpoint: Setup new preorder task
 app.post('/api/admin/tasks', (req, res) => {
     const { target_url, variant_id, quantity, execution_time } = req.body;
 
@@ -481,7 +852,7 @@ app.post('/api/admin/tasks', (req, res) => {
 });
 
 // ==========================================
-// 8. Server Resource Monitor Mock
+// 8. Server Resource Monitor
 // ==========================================
 app.get('/api/admin/system-stats', (req, res) => {
     const memUsage = process.memoryUsage();
@@ -506,42 +877,56 @@ app.get('/api/admin/system-stats', (req, res) => {
 // Retrocompatible Frontend Endpoints & Socket Logs
 // ==========================================
 
-// REST API endpoint: Check Queue Status
+// REST API endpoint: Check Queue Status (with service status check)
 app.get('/api/check-queue', (req, res) => {
-    const username = req.query.username;
-    if (!username) {
-        return res.status(400).json({ success: false, message: 'Username is required' });
-    }
-
-    logger.info(`[API] Checking queue for: ${username}`);
-    
-    // First, verify if the user exists in the accounts table
-    db.get("SELECT * FROM accounts WHERE username = ?", [username], (err, account) => {
-        if (err) {
-            logger.error(err.message);
-            return res.status(500).json({ success: false, message: 'Database error' });
+    // Check if queue service is active
+    db.get("SELECT value FROM system_settings WHERE key = 'is_queue_active'", [], (err, setting) => {
+        if (!err && setting && setting.value === '0') {
+            // Service is closed
+            db.get("SELECT value FROM system_settings WHERE key = 'closed_message'", [], (err2, msgSetting) => {
+                const closedMsg = (msgSetting && msgSetting.value) ? msgSetting.value : 'ระบบปิดปรับปรุงชั่วคราว';
+                return res.json({
+                    success: false,
+                    service_closed: true,
+                    message: closedMsg
+                });
+            });
+            return;
         }
 
-        if (!account) {
-            broadcastLog(username, 'warn', `ไม่พบบัญชีผู้ใช้ในการตรวจสอบคิวสไนเปอร์`);
-            return res.status(404).json({ success: false, message: 'Account not found' });
+        // Service is active — proceed normally
+        const username = req.query.username;
+        if (!username) {
+            return res.status(400).json({ success: false, message: 'Username is required' });
         }
 
-        // Query all orders belonging to this user from the orders table
-        db.all("SELECT * FROM orders WHERE username = ? ORDER BY last_updated DESC", [username], (err, orders) => {
+        logger.info(`[API] Checking queue for: ${username}`);
+        
+        db.get("SELECT * FROM accounts WHERE username = ?", [username], (err, account) => {
             if (err) {
                 logger.error(err.message);
                 return res.status(500).json({ success: false, message: 'Database error' });
             }
 
-            broadcastLog(username, 'info', `คิวถูกร้องขอตรวจสอบสถานะปัจจุบัน: ดึงข้อมูลพรีออเดอร์ทั้งหมด ${orders.length} รายการ`);
-            
-            // Asynchronously trigger target update simulation
-            updateQueueFromTarget(username);
+            if (!account) {
+                broadcastLog(username, 'warn', `ไม่พบบัญชีผู้ใช้ในการตรวจสอบคิวสไนเปอร์`);
+                return res.status(404).json({ success: false, message: 'Account not found' });
+            }
 
-            return res.json({
-                success: true,
-                data: orders // Array of all preorder items
+            db.all("SELECT * FROM orders WHERE username = ? ORDER BY last_updated DESC", [username], (err, orders) => {
+                if (err) {
+                    logger.error(err.message);
+                    return res.status(500).json({ success: false, message: 'Database error' });
+                }
+
+                broadcastLog(username, 'info', `คิวถูกร้องขอตรวจสอบสถานะปัจจุบัน: ดึงข้อมูลพรีออเดอร์ทั้งหมด ${orders.length} รายการ`);
+                
+                updateQueueFromTarget(username);
+
+                return res.json({
+                    success: true,
+                    data: orders
+                });
             });
         });
     });
