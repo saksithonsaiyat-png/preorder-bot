@@ -7,9 +7,10 @@ const db = new sqlite3.Database(dbPath, (err) => {
         console.error('Error opening database:', err.message);
     } else {
         console.log('Connected to the SQLite database.');
-        initializeDatabase();
     }
 });
+
+initializeDatabase();
 
 function initializeDatabase() {
     db.serialize(() => {
@@ -35,6 +36,18 @@ function initializeDatabase() {
                 level TEXT, -- info, warn, error, success
                 message TEXT NOT NULL,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Tasks table: holds preorder scheduler tasks
+        db.run(`
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                target_url TEXT NOT NULL,
+                variant_id TEXT NOT NULL,
+                quantity INTEGER DEFAULT 1,
+                execution_time DATETIME NOT NULL,
+                status TEXT DEFAULT 'pending' -- pending, running, completed, failed
             )
         `);
 

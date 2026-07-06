@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="th" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบควบคุมหลังบ้าน (Admin Control Panel) • checkorder</title>
+    <!-- Google Fonts: IBM Plex Sans Thai & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ["'IBM Plex Sans Thai'", "'Inter'", 'sans-serif'],
+                        mono: ["'Courier New'", 'Courier', 'monospace']
+                    },
+                    colors: {
+                        primary: {
+                            DEFAULT: '#4A7BF8',
+                            foreground: '#ffffff',
+                            glow: 'rgba(74,123,248,0.15)',
+                        },
+                        danger: {
+                            DEFAULT: '#f43f5e',
+                            glow: 'rgba(244,63,94,0.2)',
+                        },
+                        card: {
+                            DEFAULT: '#18181b',
+                            hover: '#202024',
+                            border: '#27272a',
+                        }
+                    },
+                    backgroundImage: {
+                        'brand-gradient': 'linear-gradient(267.43deg, #76CEFF -14%, #4A7BF8 103.94%)',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Alpine.js CDN -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        body {
+            font-family: 'IBM Plex Sans Thai', 'Inter', sans-serif;
+            background-color: #030014;
+        }
+        /* Custom scrollbar for log terminal */
+        .terminal-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .terminal-scroll::-webkit-scrollbar-track {
+            background: #09090b;
+        }
+        .terminal-scroll::-webkit-scrollbar-thumb {
+            background: #27272a;
+            border-radius: 3px;
+        }
+        .terminal-scroll::-webkit-scrollbar-thumb:hover {
+            background: #3f3f46;
+        }
+    </style>
+</head>
+<body class="text-zinc-100 min-h-screen flex flex-col antialiased relative overflow-x-hidden" x-data="adminDashboard()">
+
+    <!-- Stars Background -->
+    <canvas id="background" class="w-full h-full absolute inset-0 -z-20 opacity-30 pointer-events-none"></canvas>
+    
+    <!-- Glow Ellipses -->
+    <div class="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-blue-500/10 blur-[150px] -z-10 pointer-events-none"></div>
+    <div class="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-purple-500/10 blur-[150px] -z-10 pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="bg-[#030014]/85 border-b border-white/5 sticky top-0 z-40 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <span class="text-2xl font-extrabold tracking-wider bg-clip-text text-transparent bg-brand-gradient">checkorder</span>
+                <span class="text-xs bg-purple-500/20 text-purple-400 border border-purple-500/30 font-semibold px-2.5 py-0.5 rounded-full">Developer Admin Panel</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <a href="/" class="text-xs font-semibold text-zinc-400 hover:text-white transition-colors flex items-center gap-1">
+                    <span>กลับไปยังหน้าบ้าน (User Portal)</span>
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        
+        <!-- Live Alert Banner for Kill Switch -->
+        <template x-if="stats.isGlobalKillSwitchActive">
+            <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between text-red-200 animate-pulse">
+                <div class="flex items-center space-x-3">
+                    <svg class="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                    </svg>
+                    <div>
+                        <span class="font-bold block">GLOBAL KILL SWITCH IS ACTIVE</span>
+                        <span class="text-xs opacity-80">การทำงานของบอทและทราฟฟิกเชื่อมต่อภายนอกทั้งหมดถูกบล็อกโดยสมบูรณ์</span>
+                    </div>
+                </div>
+                <button @click="toggleKillSwitch(false)" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-1.5 px-4 rounded-lg text-xs transition">
+                    ปิดการทำงานสวิตช์ภัยพิบัติ
+                </button>
+            </div>
+        </template>
+
+        <!-- Stats Overview Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <!-- Metric 1: Uptime -->
+            <div class="bg-card border border-card-border rounded-xl p-5">
+                <span class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">ระยะเวลาเซิร์ฟเวอร์เปิดใช้งาน</span>
+                <span class="text-2xl font-extrabold text-white block mt-2" x-text="stats.uptime || 'กำลังตรวจสอบ...'"></span>
+            </div>
+            <!-- Metric 2: Active Tasks -->
+            <div class="bg-card border border-card-border rounded-xl p-5">
+                <span class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">บอทที่ทำงานพร้อมกันขณะนี้</span>
+                <span class="text-2xl font-extrabold text-primary block mt-2" x-text="stats.activeConcurrentTasks !== undefined ? stats.activeConcurrentTasks + ' Tasks' : 'กำลังตรวจสอบ...'"></span>
+            </div>
+            <!-- Metric 3: Memory RSS -->
+            <div class="bg-card border border-card-border rounded-xl p-5">
+                <span class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">การใช้เมมโมรี่ (Heap Used)</span>
+                <span class="text-2xl font-extrabold text-emerald-400 block mt-2" x-text="stats.memoryUsage ? stats.memoryUsage.heapUsed : 'กำลังตรวจสอบ...'"></span>
+            </div>
+            <!-- Metric 4: System Connection -->
+            <div class="bg-card border border-card-border rounded-xl p-5 flex flex-col justify-between">
+                <span class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">สถานะ SSE STREAM HUB</span>
+                <div class="flex items-center space-x-2 mt-2">
+                    <span class="w-3 h-3 rounded-full animate-ping" :class="sseConnected ? 'bg-emerald-500' : 'bg-rose-500'"></span>
+                    <span class="font-bold text-sm" :class="sseConnected ? 'text-emerald-400' : 'text-rose-400'" x-text="sseConnected ? 'ออนไลน์ (เชื่อมต่อแล้ว)' : 'กำลังเชื่อมต่อใหม่...'"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Preorder Task Scheduler Form -->
+            <div class="bg-card border border-card-border rounded-xl p-6 lg:col-span-1 flex flex-col justify-between">
+                <div class="space-y-4">
+                    <div class="border-b border-card-border pb-3">
+                        <h2 class="text-lg font-bold text-white">ตั้งเวลางานพรีออเดอร์บอท</h2>
+                        <p class="text-xs text-zinc-400">สร้างและกำหนดเวลาการแย่งซื้อสินค้าพรีออเดอร์อัตโนมัติ</p>
+                    </div>
+
+                    <form @submit.prevent="createTask()" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">ลิงก์ปลายทาง (Target URL)</label>
+                            <input type="text" x-model="taskForm.target_url" placeholder="https://thewestern.rdcw.xyz/api/checkout" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-white" required>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">รหัสสินค้า (Variant ID)</label>
+                                <input type="text" x-model="taskForm.variant_id" placeholder="variant_123" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-white" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">จำนวนสินค้า (Quantity)</label>
+                                <input type="number" x-model="taskForm.quantity" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-white" min="1" required>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">เวลาเริ่มรันบอท (Target Execution Time)</label>
+                            <input type="datetime-local" x-model="taskForm.execution_time" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-white" required>
+                        </div>
+
+                        <button type="submit" class="w-full bg-primary hover:opacity-90 text-white font-semibold py-2.5 rounded-lg text-sm transition shadow-md">
+                            กำหนดตารางงานพรีออเดอร์
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Developer Live Logs Terminal & Abort panel -->
+            <div class="bg-card border border-card-border rounded-xl p-6 lg:col-span-2 flex flex-col">
+                <div class="border-b border-card-border pb-3 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-bold text-white">คอนโซลวิเคราะห์ระบบแบบเรียลไทม์</h2>
+                        <p class="text-xs text-zinc-400">แสดงผลล็อก Winston และ SSE status updates สดๆ จากเซิร์ฟเวอร์</p>
+                    </div>
+                    
+                    <!-- Emergency Stop Switch -->
+                    <button @click="toggleKillSwitch(!stats.isGlobalKillSwitchActive)" 
+                            :class="stats.isGlobalKillSwitchActive ? 'bg-zinc-800 hover:bg-zinc-700 border-zinc-600' : 'bg-red-500/10 hover:bg-red-500/20 border-red-500/30 text-red-400'"
+                            class="border px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 active:scale-95">
+                        <span class="w-2.5 h-2.5 rounded-full bg-red-500" :class="stats.isGlobalKillSwitchActive ? 'bg-zinc-400' : 'bg-red-500 animate-ping'"></span>
+                        <span x-text="stats.isGlobalKillSwitchActive ? 'ปลดปุ่มหยุดด่วน' : 'EMERGENCY KILL SWITCH'"></span>
+                    </button>
+                </div>
+
+                <!-- Log Panel -->
+                <div class="flex-grow mt-4 bg-black border border-zinc-800 rounded-lg p-4 h-96 flex flex-col">
+                    <div class="flex justify-between items-center text-xs text-zinc-500 border-b border-zinc-900 pb-2 mb-2">
+                        <span>system-console:~$ tail -f logs/application.log</span>
+                        <button @click="logs = []" class="hover:text-white transition">Clear Console</button>
+                    </div>
+                    
+                    <div class="flex-grow overflow-y-auto terminal-scroll text-xs font-mono space-y-1.5 pr-2" id="console-output">
+                        <!-- Welcome message -->
+                        <div class="text-zinc-500">&gt; Live stream initialized. Connected console updates will be outputted below.</div>
+                        <template x-for="log in logs">
+                            <div :class="{
+                                'text-zinc-300': log.level === 'info',
+                                'text-yellow-400': log.level === 'warn',
+                                'text-red-400 font-semibold': log.level === 'error',
+                                'text-emerald-400 font-bold': log.level === 'success'
+                            }">
+                                <span class="text-zinc-500" x-text="`[${log.time}]`"></span>
+                                <span x-text="`[${log.level.toUpperCase()}]: ${log.message}`"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-[#030014]/85 border-t border-white/5 py-6 text-center text-xs text-zinc-500 relative z-10">
+        <p>© 2026 checkorder Control Panel. All rights reserved. • System Admin Tool</p>
+    </footer>
+
+    <script>
+        function adminDashboard() {
+            return {
+                stats: {
+                    uptime: '0s',
+                    activeConcurrentTasks: 0,
+                    isGlobalKillSwitchActive: false,
+                    memoryUsage: null
+                },
+                taskForm: {
+                    target_url: 'https://thewestern.rdcw.xyz/api/checkout-mock',
+                    variant_id: '',
+                    quantity: 1,
+                    execution_time: ''
+                },
+                logs: [],
+                sseConnected: false,
+                sseSource: null,
+
+                init() {
+                    this.initStars();
+                    this.fetchStats();
+                    this.connectSSE();
+                    
+                    // Poll stats every 2 seconds
+                    setInterval(() => this.fetchStats(), 2000);
+                },
+
+                initStars() {
+                    const canvas = document.getElementById('background');
+                    if (canvas) {
+                        const ctx = canvas.getContext('2d');
+                        let width = canvas.width = window.innerWidth;
+                        let height = canvas.height = window.innerHeight;
+
+                        window.addEventListener('resize', () => {
+                            width = canvas.width = window.innerWidth;
+                            height = canvas.height = window.innerHeight;
+                        });
+
+                        const particles = [];
+                        for (let i = 0; i < 40; i++) {
+                            particles.push({
+                                x: Math.random() * width,
+                                y: Math.random() * height,
+                                radius: Math.random() * 1.2 + 0.4,
+                                vx: Math.random() * 0.15 - 0.075,
+                                vy: Math.random() * 0.15 - 0.075,
+                                alpha: Math.random() * 0.4 + 0.1
+                            });
+                        }
+
+                        function animate() {
+                            ctx.clearRect(0, 0, width, height);
+                            particles.forEach(p => {
+                                p.x += p.vx;
+                                p.y += p.vy;
+                                if (p.x < 0 || p.x > width) p.vx *= -1;
+                                if (p.y < 0 || p.y > height) p.vy *= -1;
+                                ctx.beginPath();
+                                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                                ctx.fillStyle = `rgba(139, 92, 246, ${p.alpha})`;
+                                ctx.fill();
+                            });
+                            requestAnimationFrame(animate);
+                        }
+                        animate();
+                    }
+                },
+
+                async fetchStats() {
+                    try {
+                        const response = await fetch('/api/admin/system-stats');
+                        if (response.ok) {
+                            const result = await response.json();
+                            if (result.success) {
+                                this.stats = result.data;
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Failed to fetch system stats:', err);
+                    }
+                },
+
+                connectSSE() {
+                    if (this.sseSource) {
+                        this.sseSource.close();
+                    }
+
+                    this.sseSource = new EventSource('/api/admin/bot-stream');
+
+                    this.sseSource.onopen = () => {
+                        this.sseConnected = true;
+                        this.addLocalLog('info', 'เชื่อมต่อกับ SSE Live Stream สำเร็จ');
+                    };
+
+                    this.sseSource.onerror = (err) => {
+                        console.error('SSE Error:', err);
+                        this.sseConnected = false;
+                        this.addLocalLog('error', 'การเชื่อมต่อ SSE ผิดพลาด กำลังเชื่อมต่อใหม่...');
+                    };
+
+                    this.sseSource.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            const timeStr = new Date().toLocaleTimeString('th-TH');
+                            
+                            // Map event messages to console outputs
+                            if (data.event === 'connected') {
+                                this.addLocalLog('info', data.message);
+                            } else {
+                                const level = data.status === 'Success' ? 'success' : (data.status === 'Blocked' ? 'error' : 'info');
+                                const message = `Task #${data.taskId} [Account: ${data.accountUsername}] - Status: ${data.status} ${data.extraInfo ? '(' + data.extraInfo + ')' : ''}`;
+                                this.logs.push({
+                                    time: timeStr,
+                                    level,
+                                    message
+                                });
+                                this.scrollToBottom();
+                            }
+                        } catch (e) {
+                            console.error('Failed parsing SSE payload:', e);
+                        }
+                    };
+                },
+
+                addLocalLog(level, message) {
+                    const timeStr = new Date().toLocaleTimeString('th-TH');
+                    this.logs.push({
+                        time: timeStr,
+                        level,
+                        message
+                    });
+                    this.scrollToBottom();
+                },
+
+                scrollToBottom() {
+                    setTimeout(() => {
+                        const out = document.getElementById('console-output');
+                        if (out) out.scrollTop = out.scrollHeight;
+                    }, 50);
+                },
+
+                async createTask() {
+                    try {
+                        const response = await fetch('/api/admin/tasks', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                target_url: this.taskForm.target_url,
+                                variant_id: this.taskForm.variant_id,
+                                quantity: parseInt(this.taskForm.quantity),
+                                execution_time: new Date(this.taskForm.execution_time).toISOString()
+                            })
+                        });
+
+                        const result = await response.json();
+                        if (result.success) {
+                            this.addLocalLog('success', `ตารางงานรันบอทถูกสร้างและพร้อมเริ่มทำงาน (Task ID: ${result.data.id})`);
+                            // Reset variant field
+                            this.taskForm.variant_id = '';
+                        } else {
+                            this.addLocalLog('error', `สร้างตารางงานล้มเหลว: ${result.message}`);
+                        }
+                    } catch (err) {
+                        this.addLocalLog('error', `เครือข่ายผิดพลาด: ไม่สามารถสื่อสารเพื่อสร้างตารางงานได้`);
+                    }
+                },
+
+                async toggleKillSwitch(activate) {
+                    try {
+                        const response = await fetch('/api/admin/kill-switch', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ active: activate })
+                        });
+
+                        const result = await response.json();
+                        if (result.success) {
+                            this.stats.isGlobalKillSwitchActive = result.isGlobalKillSwitchActive;
+                            const statusMsg = result.isGlobalKillSwitchActive 
+                                ? 'เปิดใช้งานสวิตช์ภัยพิบัติ (Emergency Abort) สำเร็จ - ทุกคิวงานและคำขอเซิร์ฟเวอร์ถูกยกเลิกแล้ว' 
+                                : 'ยกเลิกสวิตช์ภัยพิบัติแล้ว - บอทกลับสู่สถานะพร้อมทำงานตามตาราง';
+                            this.addLocalLog(result.isGlobalKillSwitchActive ? 'error' : 'info', statusMsg);
+                        }
+                    } catch (err) {
+                        this.addLocalLog('error', 'ล้มเหลวในการส่งคำขอ Toggle Kill Switch ไปยังเซิร์ฟเวอร์');
+                    }
+                }
+            };
+        }
+    </script>
+</body>
+</html>
