@@ -131,6 +131,16 @@ function broadcastLog(username, level, message) {
     }
 }
 
+// Helper: Broadcast update notification to WebSocket clients
+function broadcastUpdate(target) {
+    const socketMsg = JSON.stringify({ type: 'update', target });
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(socketMsg);
+        }
+    });
+}
+
 // ==========================================
 // 3. Live Status Broadcaster (SSE Hub)
 // ==========================================
@@ -301,11 +311,12 @@ app.post('/api/admin/update-profile', authMiddleware, (req, res) => {
 // DASHBOARD STATS ENDPOINT
 // ==========================================
 app.get('/api/admin/dashboard-stats', authMiddleware, (req, res) => {
-    const queries = {
-        daily: "WHERE date(last_updated) = date('now')",
-        weekly: "WHERE last_updated >= datetime('now', '-7 days')",
-        monthly: "WHERE last_updated >= datetime('now', '-30 days')"
-    };
+    const now = new Date();
+    // Start of today in local timezone, represented as a UTC ISO string
+    const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dailyStart = todayLocal.toISOString();
+    const weeklyStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const monthlyStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
     const result = {
         daily: { processing: 0, completed: 0, failed: 0, cancelled: 0 },
@@ -313,36 +324,133 @@ app.get('/api/admin/dashboard-stats', authMiddleware, (req, res) => {
         monthly: { processing: 0, completed: 0, failed: 0, cancelled: 0 }
     };
 
-    let completed = 0;
-    const periods = Object.keys(queries);
+    const queries = [
+        { period: 'daily', sql: "SELECT queue_status, COUNT(*) as count FROM orders WHERE last_updated >= ? GROUP BY queue_status", param: dailyStart },
+        { period: 'weekly', sql: "SELECT queue_status, COUNT(*) as count FROM orders WHERE last_updated >= ? GROUP BY queue_status", param: weeklyStart },
+        { period: 'monthly', sql: "SELECT queue_status, COUNT(*) as count FROM orders WHERE last_updated >= ? GROUP BY queue_status", param: monthlyStart }
+    ];
 
-    periods.forEach(period => {
+    let completed = 0;
+    queries.forEach(({ period, sql, param }) => {
+        db.all(sql, [param], (err, rows) => {
+            if (!err && rows) {
+                // Reset this period's count just to be clean
+                result[period] = { processing: 0, completed: 0, failed: 0, cancelled: 0 };
+                rows.forEach(row => {
+                    const status = row.queue_status;
+                    if (status === 'Processing' || status === 'Pending') {
+                        result[period].processing += row.count;
+                    } else if (status === 'Completed') {
+                        result[period].completed = row.count;
+                    } else if (status === 'Failed') {
+                        result[period].failed = row.count;
+                    } else if (status === 'Cancelled') {
+                        result[period].cancelled = row.count;
+                    }
+                });
+            }
+            completed++;
+            if (completed === queries.length) {
+                res.json({ success: true, data: result });
+            }
+        });
+    });
+});
+
+// ==========================================
+// QUEUE RE-SEQUENCING HELPERS
+// ==========================================
+
+// Resequence all active orders to remove gaps and ensure continuous 1..N order.
+function resequenceAllActiveOrders(callback) {
+    db.serialize(() => {
         db.all(
-            `SELECT queue_status, COUNT(*) as count FROM orders ${queries[period]} GROUP BY queue_status`,
+            "SELECT id FROM orders WHERE queue_status IN ('Pending', 'Processing') ORDER BY queue_position ASC, last_updated DESC",
             [],
             (err, rows) => {
-                if (!err && rows) {
-                    rows.forEach(row => {
-                        const status = row.queue_status;
-                        if (status === 'Processing' || status === 'Pending') {
-                            result[period].processing += row.count;
-                        } else if (status === 'Completed') {
-                            result[period].completed = row.count;
-                        } else if (status === 'Failed') {
-                            result[period].failed = row.count;
-                        } else if (status === 'Cancelled') {
-                            result[period].cancelled = row.count;
+                if (err) {
+                    if (callback) callback(err);
+                    return;
+                }
+                if (!rows || rows.length === 0) {
+                    if (callback) callback(null);
+                    return;
+                }
+                
+                let completed = 0;
+                let hasError = false;
+                rows.forEach((row, index) => {
+                    const pos = index + 1;
+                    db.run(
+                        "UPDATE orders SET queue_position = ? WHERE id = ?",
+                        [pos, row.id],
+                        (updateErr) => {
+                            if (updateErr) hasError = true;
+                            completed++;
+                            if (completed === rows.length) {
+                                if (hasError) callback(new Error("Failed to update queue positions"));
+                                else callback(null);
+                            }
                         }
-                    });
-                }
-                completed++;
-                if (completed === periods.length) {
-                    res.json({ success: true, data: result });
-                }
+                    );
+                });
             }
         );
     });
-});
+}
+
+// Resequence active orders by inserting orderId at newPosition (1-indexed).
+// Handles splicing and shifts all other active items accordingly.
+function updateQueueSequence(orderId, newPosition, isBecomingActive, isBecomingInactive, callback) {
+    db.serialize(() => {
+        // Find all active orders except the one being updated (if it's becoming inactive or was already inactive)
+        db.all(
+            "SELECT id, queue_position FROM orders WHERE queue_status IN ('Pending', 'Processing') AND id != ? ORDER BY queue_position ASC, last_updated DESC",
+            [orderId],
+            (err, otherActiveOrders) => {
+                if (err) return callback(err);
+
+                let list = [...otherActiveOrders];
+
+                if (isBecomingInactive) {
+                    // The order is no longer in the active list. We just re-sequence the remaining active orders.
+                } else {
+                    // The order is active (either it was already active, or it is becoming active).
+                    // We need to insert orderId into the list at newPosition.
+                    const targetPos = parseInt(newPosition);
+                    // Clamp target index
+                    const targetIndex = isNaN(targetPos) || targetPos <= 0 
+                        ? list.length // Append to end if invalid/0
+                        : Math.max(0, Math.min(targetPos - 1, list.length));
+                    
+                    list.splice(targetIndex, 0, { id: parseInt(orderId) });
+                }
+
+                if (list.length === 0) {
+                    return callback(null);
+                }
+
+                let completed = 0;
+                let hasError = false;
+                list.forEach((item, index) => {
+                    const pos = index + 1;
+                    db.run(
+                        "UPDATE orders SET queue_position = ? WHERE id = ?",
+                        [pos, item.id],
+                        (updateErr) => {
+                            if (updateErr) hasError = true;
+                            completed++;
+                            if (completed === list.length) {
+                                if (hasError) callback(new Error("Failed to update queue positions"));
+                                else callback(null);
+                            }
+                        }
+                    );
+                });
+            }
+        );
+    });
+}
 
 // ==========================================
 // ORDERS MANAGEMENT ENDPOINTS
@@ -377,16 +485,23 @@ app.put('/api/admin/orders/:id', authMiddleware, (req, res) => {
         const params = [];
         const auditChanges = [];
 
+        // Check status change types
+        const oldIsActive = ['Pending', 'Processing'].includes(order.queue_status);
+        const newStatus = queue_status || order.queue_status;
+        const newIsActive = ['Pending', 'Processing'].includes(newStatus);
+        
+        const isBecomingInactive = oldIsActive && !newIsActive;
+        const isBecomingActive = !oldIsActive && newIsActive;
+
         // Update queue_status
         if (queue_status && queue_status !== order.queue_status) {
             updates.push("queue_status = ?");
             params.push(queue_status);
             auditChanges.push(`สถานะ: ${order.queue_status} → ${queue_status}`);
 
-            // If completed/failed/cancelled, set position to 0
-            if (['Completed', 'Failed', 'Cancelled'].includes(queue_status)) {
+            // If completed/failed/cancelled, set position to 0 and clear wait target
+            if (!newIsActive) {
                 updates.push("queue_position = 0");
-                // Clear wait target
                 updates.push("wait_time_target = NULL");
             }
         }
@@ -400,20 +515,13 @@ app.put('/api/admin/orders/:id', authMiddleware, (req, res) => {
             auditChanges.push(`เวลารอสินค้า: ปรับเป็น ${mins} นาที`);
         }
 
-        // Update queue position
-        if (queue_position !== undefined && queue_position !== '' && parseInt(queue_position) !== order.queue_position) {
-            updates.push("queue_position = ?");
-            params.push(parseInt(queue_position));
-            auditChanges.push(`ลำดับคิว: ${order.queue_position} → ${queue_position}`);
-        }
-
         // Update notes
         if (notes !== undefined && notes !== order.notes) {
             updates.push("notes = ?");
             params.push(notes);
         }
 
-        if (updates.length === 0) {
+        if (updates.length === 0 && (queue_position === undefined || queue_position === '')) {
             return res.json({ success: true, message: 'ไม่มีการเปลี่ยนแปลง' });
         }
 
@@ -421,6 +529,11 @@ app.put('/api/admin/orders/:id', authMiddleware, (req, res) => {
         updates.push("last_updated = ?");
         params.push(now);
         params.push(orderId);
+
+        // Determine if we need to adjust queue positions
+        const positionChanged = queue_position !== undefined && queue_position !== '' && parseInt(queue_position) !== order.queue_position;
+        const needsQueueAdjustment = positionChanged || isBecomingActive || isBecomingInactive;
+        const targetQueuePos = positionChanged ? parseInt(queue_position) : order.queue_position;
 
         db.run(
             `UPDATE orders SET ${updates.join(', ')} WHERE id = ?`,
@@ -431,11 +544,28 @@ app.put('/api/admin/orders/:id', authMiddleware, (req, res) => {
                     return res.status(500).json({ success: false, message: 'Database error' });
                 }
 
-                const auditMsg = `แก้ไขออเดอร์ #${orderId} (${order.product_name}): ${auditChanges.join(', ')}`;
-                addAuditLog(adminName, auditMsg);
-                logger.info(`[Admin: ${adminName}] ${auditMsg}`);
-
-                res.json({ success: true, message: 'อัปเดตออเดอร์สำเร็จ' });
+                if (needsQueueAdjustment) {
+                    // Update the sequencing of active orders
+                    updateQueueSequence(orderId, targetQueuePos, isBecomingActive, isBecomingInactive, (seqErr) => {
+                        if (seqErr) {
+                            logger.error(`Queue sequencing error: ${seqErr.message}`);
+                        }
+                        
+                        // Record queue position changes in audit log
+                        if (positionChanged) {
+                            auditChanges.push(`ลำดับคิว: ${order.queue_position} → ${targetQueuePos}`);
+                        }
+                        const auditMsg = `แก้ไขออเดอร์ #${orderId} (${order.product_name}): ${auditChanges.join(', ')}`;
+                        addAuditLog(adminName, auditMsg);
+                        logger.info(`[Admin: ${adminName}] ${auditMsg}`);
+                        res.json({ success: true, message: 'อัปเดตออเดอร์และคิวสำเร็จ' });
+                    });
+                } else {
+                    const auditMsg = `แก้ไขออเดอร์ #${orderId} (${order.product_name}): ${auditChanges.join(', ')}`;
+                    addAuditLog(adminName, auditMsg);
+                    logger.info(`[Admin: ${adminName}] ${auditMsg}`);
+                    res.json({ success: true, message: 'อัปเดตออเดอร์สำเร็จ' });
+                }
             }
         );
     });
@@ -457,23 +587,17 @@ app.delete('/api/admin/orders/:id', authMiddleware, (req, res) => {
             }
 
             // Re-sequence queue positions for remaining active orders
-            db.all(
-                "SELECT id FROM orders WHERE queue_status IN ('Pending', 'Processing') ORDER BY queue_position ASC",
-                [],
-                (err, remaining) => {
-                    if (!err && remaining) {
-                        remaining.forEach((row, index) => {
-                            db.run("UPDATE orders SET queue_position = ? WHERE id = ?", [index + 1, row.id]);
-                        });
-                    }
+            resequenceAllActiveOrders((seqErr) => {
+                if (seqErr) {
+                    logger.error(`Queue re-sequencing after delete error: ${seqErr.message}`);
                 }
-            );
+                
+                const auditMsg = `ลบออเดอร์ #${orderId} (${order.product_name}) ของ ${order.username} ออกจากระบบ`;
+                addAuditLog(adminName, auditMsg);
+                logger.info(`[Admin: ${adminName}] ${auditMsg}`);
 
-            const auditMsg = `ลบออเดอร์ #${orderId} (${order.product_name}) ของ ${order.username} ออกจากระบบ`;
-            addAuditLog(adminName, auditMsg);
-            logger.info(`[Admin: ${adminName}] ${auditMsg}`);
-
-            res.json({ success: true, message: 'ลบออเดอร์เรียบร้อยแล้ว' });
+                res.json({ success: true, message: 'ลบออเดอร์เรียบร้อยแล้ว' });
+            });
         });
     });
 });
@@ -971,6 +1095,20 @@ async function updateQueueFromTarget(username) {
                             broadcastLog(username, 'error', `ไม่สามารถเซฟข้อมูลคิวอัปเดตของสินค้า ${order.product_name} ลงฐานข้อมูลได้: ${err.message}`);
                         } else {
                             broadcastLog(username, 'success', `บอทอัปเดตคิวสินค้า ${order.product_name} สำเร็จ: สถานะย้ายไปเป็น ${nextStatus} (คิวลำดับ #${nextPos})`);
+                            
+                            // Add system audit log
+                            const logMsg = `บอทอัปเดตออเดอร์ #${order.id} (${order.product_name}): สถานะ ${order.queue_status} → ${nextStatus}, คิว #${order.queue_position} → #${nextPos}`;
+                            addAuditLog('ระบบอัตโนมัติ (System)', logMsg);
+                            
+                            // Broadcast update signal so admin panel refreshes immediately
+                            broadcastUpdate('orders');
+                            
+                            // Re-sequence remaining active orders if state changed
+                            if (nextStatus !== order.queue_status || nextPos !== order.queue_position) {
+                                resequenceAllActiveOrders((seqErr) => {
+                                    if (seqErr) logger.error(`Auto-update queue re-sequencing error: ${seqErr.message}`);
+                                });
+                            }
                         }
                     }
                 );

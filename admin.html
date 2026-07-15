@@ -45,7 +45,7 @@
     <style>
         body {
             font-family: 'IBM Plex Sans Thai', 'Inter', sans-serif;
-            background-color: #030014;
+            background-color: #0e0e11;
         }
 
         [x-cloak] {
@@ -74,17 +74,16 @@
 <body class="text-zinc-100 min-h-screen flex flex-col antialiased relative overflow-x-hidden"
     x-data="adminDashboard()">
 
-    <!-- Stars Background -->
-    <canvas id="background" class="w-full h-full absolute inset-0 -z-20 opacity-30 pointer-events-none"></canvas>
+    <!-- Background (No floating stars) -->
 
     <!-- Glow Ellipses -->
-    <div class="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-blue-500/10 blur-[150px] -z-10 pointer-events-none"></div>
-    <div class="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-purple-500/10 blur-[150px] -z-10 pointer-events-none"></div>
+    <div class="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/5 blur-[130px] -z-10 pointer-events-none"></div>
+    <div class="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-purple-600/5 blur-[130px] -z-10 pointer-events-none"></div>
 
     <!-- ==================== AUTH OVERLAY ==================== -->
     <div x-show="!authenticated"
         class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" x-cloak>
-        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-2xl space-y-6">
+        <div class="bg-zinc-950/80 border border-zinc-800 rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-2xl space-y-6 backdrop-blur-md">
             <div class="text-center space-y-2">
                 <span class="text-3xl font-extrabold tracking-wider bg-clip-text text-transparent bg-brand-gradient">checkorder</span>
                 <h3 class="text-lg font-bold text-white"
@@ -150,7 +149,7 @@
     <div x-show="authenticated" class="flex-grow flex flex-col" x-cloak>
 
         <!-- Header -->
-        <header class="bg-[#030014]/85 border-b border-white/5 sticky top-0 z-40 backdrop-blur-md">
+        <header class="bg-[#0e0e11]/75 border-b border-zinc-900 sticky top-0 z-40 backdrop-blur-md">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                 <div class="flex items-center space-x-3">
                     <span class="text-2xl font-extrabold tracking-wider bg-clip-text text-transparent bg-brand-gradient">checkorder</span>
@@ -485,7 +484,7 @@
         </main>
 
         <!-- Footer -->
-        <footer class="bg-[#030014]/85 border-t border-white/5 py-5 text-center text-xs text-zinc-500 relative z-10">
+        <footer class="bg-[#0e0e11] border-t border-zinc-900 py-5 text-center text-xs text-zinc-500 relative z-10">
             <p>© 2026 checkorder Admin Panel. All rights reserved.</p>
         </footer>
     </div>
@@ -519,6 +518,10 @@
                         <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">ลำดับคิว (Position)</label>
                         <input type="number" x-model="selectedOrder.queue_position" min="0" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white">
                     </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">หมายเหตุจากทีมงาน (Admin Notes)</label>
+                    <textarea x-model="selectedOrder.notes" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white h-20 resize-none" placeholder="รายละเอียด เช่น เลขพัสดุ หรือข้อความชี้แจง..."></textarea>
                 </div>
                 <div class="flex justify-end gap-3 pt-2">
                     <button type="button" @click="editModalOpen = false" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold py-2 px-5 rounded-lg text-xs transition">ยกเลิก</button>
@@ -594,7 +597,6 @@
                 countdownInterval: null,
 
                 init() {
-                    this.initStars();
                     if (this.authenticated) {
                         this.onLoginSuccess();
                     }
@@ -661,6 +663,7 @@
                     this.authenticated = false;
                     this.adminUsername = '';
                     if (this.sseSource) this.sseSource.close();
+                    if (this.ws) this.ws.close();
                 },
 
                 onLoginSuccess() {
@@ -670,6 +673,7 @@
                     this.fetchSystemSettings();
                     this.fetchAuditLogs();
                     this.connectSSE();
+                    this.connectWebSocket();
 
                     setInterval(() => {
                         if (this.authenticated) {
@@ -755,6 +759,34 @@
                                 this.addLocalLog(level, message);
                             }
                         } catch (e) { }
+                    };
+                },
+
+                connectWebSocket() {
+                    if (this.ws) this.ws.close();
+                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    const wsUrl = `${protocol}//${window.location.host}`;
+                    this.ws = new WebSocket(wsUrl);
+
+                    this.ws.onmessage = (event) => {
+                        try {
+                            const msg = JSON.parse(event.data);
+                            if (msg.type === 'log') {
+                                const log = msg.data;
+                                const userStr = log.username ? `[${log.username}] ` : '';
+                                this.addLocalLog(log.level, `${userStr}${log.message}`);
+                            } else if (msg.type === 'update' && msg.target === 'orders') {
+                                this.fetchOrders();
+                                this.fetchDashboardStats();
+                                this.fetchAuditLogs();
+                            }
+                        } catch (e) {}
+                    };
+
+                    this.ws.onclose = () => {
+                        if (this.authenticated) {
+                            setTimeout(() => this.connectWebSocket(), 5000);
+                        }
                     };
                 },
 
@@ -875,7 +907,8 @@
                         id: order.id,
                         queue_status: order.queue_status,
                         override_minutes: '',
-                        queue_position: order.queue_position
+                        queue_position: order.queue_position,
+                        notes: order.notes || ''
                     };
                     this.editModalOpen = true;
                 },

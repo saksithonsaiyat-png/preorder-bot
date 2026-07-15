@@ -59,17 +59,16 @@
         }
     </style>
 </head>
-<body :class="darkMode ? 'dark bg-[#030014] text-zinc-100' : 'bg-slate-50 text-slate-800'" class="min-h-screen flex flex-col antialiased relative overflow-x-hidden" x-data="queueChecker()">
+<body :class="darkMode ? 'dark bg-[#0e0e11] text-zinc-100' : 'bg-slate-50 text-slate-800'" class="min-h-screen flex flex-col antialiased relative overflow-x-hidden" x-data="queueChecker()">
 
-    <!-- Animated Star Canvas Background (only visible in Dark Mode) -->
-    <canvas id="background" x-show="darkMode" class="w-full h-full absolute inset-0 -z-20 opacity-40 pointer-events-none"></canvas>
+    <!-- Background (No floating stars) -->
 
     <!-- Radial Glow Ellipses -->
-    <div x-show="darkMode" class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-500/10 blur-[150px] -z-10 pointer-events-none"></div>
-    <div x-show="darkMode" class="absolute top-[30%] right-[-10%] w-[60%] h-[60%] rounded-full bg-purple-500/10 blur-[180px] -z-10 pointer-events-none"></div>
+    <div x-show="darkMode" class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/5 blur-[130px] -z-10 pointer-events-none"></div>
+    <div x-show="darkMode" class="absolute top-[25%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/5 blur-[150px] -z-10 pointer-events-none"></div>
 
     <!-- Navbar -->
-    <header class="border-b transition-colors duration-300" :class="darkMode ? 'bg-[#030014]/85 border-white/5 sticky top-0 z-40 backdrop-blur-md' : 'bg-white/90 border-slate-200 sticky top-0 z-40 backdrop-blur-md'">
+    <header class="border-b transition-colors duration-300" :class="darkMode ? 'bg-[#0e0e11]/75 border-zinc-900 sticky top-0 z-40 backdrop-blur-md' : 'bg-white/90 border-slate-200 sticky top-0 z-40 backdrop-blur-md'">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <span class="text-2xl font-extrabold tracking-wider bg-clip-text text-transparent bg-brand-gradient">checkorder</span>
@@ -124,10 +123,10 @@
         </template>
 
         <!-- Central Search Box -->
-        <div x-show="!serviceClosed" class="border rounded-xl shadow-2xl p-6 sm:p-8 w-full max-w-xl mx-auto transition-all duration-300" :class="darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-slate-200'">
+        <div x-show="!serviceClosed" class="border rounded-2xl shadow-xl p-6 sm:p-8 w-full max-w-xl mx-auto transition-all duration-300 hover:shadow-2xl" :class="darkMode ? 'bg-[#0d0d0f]/80 border-zinc-800/80 shadow-black/40 backdrop-blur-xl hover:border-zinc-700/80' : 'bg-white border-slate-200/80 shadow-slate-100/50 backdrop-blur-xl hover:border-slate-300'">
             <form @submit.prevent="checkQueue()" class="space-y-5">
                 <div>
-                    <label for="username-input" class="block text-xs font-bold uppercase tracking-wider mb-2.5" :class="darkMode ? 'text-zinc-400' : 'text-slate-500'">
+                    <label for="username-input" class="block text-xs font-bold uppercase tracking-wider mb-2.5" :class="darkMode ? 'text-zinc-400' : 'text-slate-505'">
                         ชื่อผู้ใช้งาน (Username / Email ของบัญชี)
                     </label>
                     <div class="relative rounded-lg shadow-sm">
@@ -138,22 +137,21 @@
                         </div>
                         <input type="text" id="username-input" x-model="username"
                             placeholder="ตัวอย่าง: customer_test_1@example.com"
-                            class="block w-full pl-11 pr-4 py-3.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all text-base border"
-                            :class="darkMode ? 'bg-black/40 border-zinc-700 text-white placeholder-zinc-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'"
+                            class="block w-full pl-11 pr-4 py-3.5 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all text-base border duration-200"
+                            :class="darkMode ? 'bg-black/60 border-zinc-800 text-white placeholder-zinc-600 focus:bg-black/90' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white'"
                             required>
                     </div>
                 </div>
 
-                <div class="flex items-center justify-between pt-2">
-                    <div class="text-[11px] font-medium" :class="darkMode ? 'text-zinc-500' : 'text-slate-400'">
-                        บัญชีทดสอบ: 
-                        <button type="button" @click="username = 'customer_test_1@example.com'" class="underline hover:text-primary transition-colors">Test-1</button>
-                        | 
-                        <button type="button" @click="username = 'customer_test_2@example.com'" class="underline hover:text-primary transition-colors">Test-2</button>
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+                    <div class="flex items-center space-x-2 text-[11px] font-medium" :class="darkMode ? 'text-zinc-500' : 'text-slate-505'">
+                        <span>บัญชีทดสอบ:</span>
+                        <button type="button" @click="username = 'customer_test_1@example.com'" class="px-2.5 py-1 rounded-md transition-all font-semibold active:scale-95" :class="darkMode ? 'bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white' : 'bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-slate-900'">Test-1</button>
+                        <button type="button" @click="username = 'customer_test_2@example.com'" class="px-2.5 py-1 rounded-md transition-all font-semibold active:scale-95" :class="darkMode ? 'bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white' : 'bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-slate-900'">Test-2</button>
                     </div>
 
                     <button type="submit"
-                        class="bg-primary hover:opacity-95 text-white font-medium py-3 px-6 rounded-lg transition-all flex items-center space-x-2 text-sm shadow-md active:scale-[0.98] duration-150"
+                        class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 text-sm shadow-lg shadow-blue-500/20 hover:shadow-blue-500/35 active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none"
                         :disabled="loading">
                         <span x-show="!loading">ตรวจสอบคิวของฉัน</span>
                         <span x-show="loading" class="flex items-center gap-2">
@@ -161,7 +159,7 @@
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            กำลังค้นหาข้อมูล...
+                            กำลังค้นหา...
                         </span>
                     </button>
                 </div>
@@ -174,69 +172,87 @@
             class="w-full max-w-3xl mx-auto mt-8 space-y-6">
 
             <!-- Title: Found Items -->
-            <div x-show="queueResults && queueResults.length > 0" class="flex items-center justify-between border-b pb-3" :class="darkMode ? 'border-zinc-800' : 'border-slate-200'">
-                <h2 class="text-lg font-bold">รายการสินค้าพรีออเดอร์ของคุณ (<span x-text="queueResults.length"></span> รายการ)</h2>
-                <span class="text-xs font-light" :class="darkMode ? 'text-zinc-500' : 'text-slate-400'">ข้อมูลล่าสุดดึงจากระบบอัตโนมัติ</span>
+            <div x-show="queueResults && queueResults.length > 0" class="flex items-center justify-between border-b pb-3 mb-4" :class="darkMode ? 'border-zinc-800/80' : 'border-slate-200'">
+                <h2 class="text-xl font-bold tracking-tight" :class="darkMode ? 'text-white' : 'text-slate-900'">รายการสินค้าพรีออเดอร์ของคุณ (<span class="text-primary" x-text="queueResults.length"></span> รายการ)</h2>
+                <span class="text-xs font-medium" :class="darkMode ? 'text-zinc-500' : 'text-slate-405'">ข้อมูลระบบอัตโนมัติ</span>
             </div>
 
             <!-- List of Queue Items -->
             <template x-for="order in queueResults" :key="order.id">
-                <div class="border rounded-xl shadow-lg overflow-hidden transition-all duration-300" :class="darkMode ? 'bg-zinc-900 border-zinc-800 hover:bg-zinc-900/80' : 'bg-white border-slate-200 hover:shadow-xl'">
+                <div class="border rounded-2xl shadow-xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.005]" :class="darkMode ? 'bg-[#0a0a0c]/90 border-zinc-800/80 shadow-black/40' : 'bg-white border-slate-200 hover:border-slate-350'">
                     <!-- Header of Product Item -->
-                    <div class="px-6 py-4 border-b flex flex-col md:flex-row md:items-center justify-between gap-4" :class="darkMode ? 'border-zinc-800 bg-white/[0.01]' : 'border-slate-100 bg-slate-50/[0.3]'">
+                    <div class="px-6 py-5 border-b flex flex-col md:flex-row md:items-center justify-between gap-4" :class="darkMode ? 'border-zinc-800 bg-white/[0.01]' : 'border-slate-100 bg-slate-50/[0.2]'">
                         <div class="flex items-center space-x-4">
                             <!-- Product Image -->
-                            <img :src="order.product_image || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=100&q=80'" @error="$event.target.src = 'https://placehold.co/100x100/4A7BF8/FFF?text=Product'" alt="Product Image" class="w-14 h-14 object-cover rounded-lg border" :class="darkMode ? 'border-zinc-800' : 'border-slate-200'">
+                            <img :src="order.product_image || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=100&q=80'" @error="$event.target.src = 'https://placehold.co/100x100/4A7BF8/FFF?text=Product'" alt="Product Image" class="w-14 h-14 object-cover rounded-xl border transition-transform duration-300 hover:scale-105" :class="darkMode ? 'border-zinc-800' : 'border-slate-200'">
                             <div>
-                                <span class="text-xs font-bold uppercase tracking-wider" :class="darkMode ? 'text-primary' : 'text-blue-600'">Preorder Item</span>
-                                <h3 class="text-base font-bold" :class="darkMode ? 'text-white' : 'text-slate-900'" x-text="order.product_name"></h3>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" :class="darkMode ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-blue-50 text-blue-600 border border-blue-100'">Preorder Item</span>
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase" 
+                                          :class="order.queue_status === 'Pending' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 
+                                                  (order.queue_status === 'Processing' ? 'bg-blue-500/10 text-blue-450 border border-blue-500/20' : 
+                                                  (order.queue_status === 'Completed' ? 'bg-emerald-500/10 text-emerald-455 border border-emerald-500/20' : 
+                                                  (order.queue_status === 'Failed' ? 'bg-rose-500/10 text-rose-450 border border-rose-500/20' : 
+                                                  'bg-zinc-500/10 text-zinc-450 border border-zinc-500/20')))"
+                                          x-text="order.queue_status === 'Pending' ? 'รอดำเนินการ' : 
+                                                 (order.queue_status === 'Processing' ? 'กำลังดำเนินการ' : 
+                                                 (order.queue_status === 'Completed' ? 'จัดส่งสำเร็จ' : 
+                                                 (order.queue_status === 'Failed' ? 'จัดส่งไม่สำเร็จ' : 'ยกเลิก')))">
+                                    </span>
+                                </div>
+                                <h3 class="text-base font-extrabold mt-1" :class="darkMode ? 'text-white' : 'text-slate-900'" x-text="order.product_name"></h3>
                             </div>
                         </div>
                         <div class="text-left md:text-right text-xs">
                             <span class="block" :class="darkMode ? 'text-zinc-500' : 'text-slate-400'">อัปเดตล่าสุด</span>
-                            <span class="font-semibold" :class="darkMode ? 'text-zinc-300' : 'text-slate-600'" x-text="formatDate(order.last_updated)"></span>
+                            <span class="font-bold" :class="darkMode ? 'text-zinc-300' : 'text-slate-700'" x-text="formatDate(order.last_updated)"></span>
                         </div>
                     </div>
 
                     <!-- Details Content -->
                     <div class="p-6 space-y-6">
                         <!-- Queue Status Metrics -->
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center rounded-xl p-4 border" :class="darkMode ? 'bg-black/30 border-zinc-800' : 'bg-slate-50 border-slate-100'">
-                            <div>
-                                <span class="text-[10px] block uppercase tracking-wider mb-1" :class="darkMode ? 'text-zinc-500' : 'text-slate-400'">ลำดับคิวปัจจุบัน</span>
-                                <span class="text-2xl font-extrabold" :class="order.queue_position > 0 ? 'text-primary' : 'text-zinc-400'" x-text="order.queue_position > 0 ? '#' + order.queue_position : '-'"></span>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <!-- Card 1: Queue Position -->
+                            <div class="rounded-xl p-4 border flex flex-col justify-center items-center transition-all duration-200 hover:scale-[1.02]" :class="darkMode ? 'bg-zinc-950/60 border-zinc-800/80 shadow-inner' : 'bg-slate-50 border-slate-100'">
+                                <span class="text-[10px] font-bold uppercase tracking-wider mb-1.5" :class="darkMode ? 'text-zinc-500' : 'text-slate-400'">ลำดับคิวปัจจุบัน</span>
+                                <span class="text-3xl font-black bg-clip-text text-transparent bg-brand-gradient" x-text="order.queue_position > 0 ? '#' + order.queue_position : '-'"></span>
                             </div>
-                            <div>
-                                <span class="text-[10px] block uppercase tracking-wider mb-1" :class="darkMode ? 'text-zinc-500' : 'text-slate-400'">คิวรอคอยข้างหน้า</span>
-                                <span class="text-2xl font-extrabold text-amber-500" x-text="order.queue_position > 1 ? order.queue_position - 1 : 0"></span>
+                            <!-- Card 2: Queues Ahead -->
+                            <div class="rounded-xl p-4 border flex flex-col justify-center items-center transition-all duration-200 hover:scale-[1.02]" :class="darkMode ? 'bg-zinc-950/60 border-zinc-800/80 shadow-inner' : 'bg-slate-50 border-slate-100'">
+                                <span class="text-[10px] font-bold uppercase tracking-wider mb-1.5" :class="darkMode ? 'text-zinc-500' : 'text-slate-400'">คิวรอคอยข้างหน้า</span>
+                                <span class="text-3xl font-black text-amber-500" x-text="order.queue_position > 1 ? order.queue_position - 1 : 0"></span>
                             </div>
-                            <div>
-                                <span class="text-[10px] block uppercase tracking-wider mb-1" :class="darkMode ? 'text-zinc-500' : 'text-slate-400'">เวลารอโดยประมาณ</span>
-                                <span class="text-base font-bold block mt-1" :class="darkMode ? 'text-zinc-200' : 'text-slate-700'" x-text="order.estimated_wait_time || '-'"></span>
+                            <!-- Card 3: Estimated Wait Time -->
+                            <div class="rounded-xl p-4 border flex flex-col justify-center items-center transition-all duration-200 hover:scale-[1.02]" :class="darkMode ? 'bg-zinc-950/60 border-zinc-800/80 shadow-inner' : 'bg-slate-50 border-slate-100'">
+                                <span class="text-[10px] font-bold uppercase tracking-wider mb-1" :class="darkMode ? 'text-zinc-500' : 'text-slate-400'">เวลารอรับสินค้า</span>
+                                <span class="text-lg font-bold block text-blue-500 dark:text-blue-400" x-text="getCountdownLabel(order)"></span>
+                                <span class="text-[9px] font-medium block text-zinc-400 mt-0.5 truncate max-w-full" x-text="order.estimated_wait_time && order.estimated_wait_time !== getCountdownLabel(order) ? '(' + order.estimated_wait_time + ')' : ''"></span>
                             </div>
-                            <div>
-                                <span class="text-[10px] block uppercase tracking-wider mb-1" :class="darkMode ? 'text-zinc-500' : 'text-slate-400'">ผู้ทำรายการ</span>
-                                <span class="text-xs font-bold block mt-1 truncate" :class="darkMode ? 'text-zinc-300' : 'text-slate-700'" x-text="order.username"></span>
+                            <!-- Card 4: Username -->
+                            <div class="rounded-xl p-4 border flex flex-col justify-center items-center transition-all duration-200 hover:scale-[1.02]" :class="darkMode ? 'bg-zinc-950/60 border-zinc-800/80 shadow-inner' : 'bg-slate-50 border-slate-100'">
+                                <span class="text-[10px] font-bold uppercase tracking-wider mb-2" :class="darkMode ? 'text-zinc-500' : 'text-slate-400'">ผู้ทำรายการ</span>
+                                <span class="text-xs font-bold block truncate max-w-full" :class="darkMode ? 'text-zinc-300' : 'text-slate-700'" x-text="order.username"></span>
                             </div>
                         </div>
 
                         <!-- Step Timeline / Progress Bar -->
-                        <div class="space-y-3">
-                            <h4 class="text-xs font-bold uppercase tracking-wider" :class="darkMode ? 'text-zinc-400' : 'text-slate-500'">ไทม์ไลน์สถานะพรีออเดอร์</h4>
+                        <div class="space-y-4">
+                            <h4 class="text-xs font-bold uppercase tracking-wider" :class="darkMode ? 'text-zinc-400' : 'text-slate-505'">ไทม์ไลน์สถานะพรีออเดอร์</h4>
                             
                             <!-- Normal Steps (Pending, Processing, Completed) -->
                             <template x-if="order.queue_status !== 'Failed' && order.queue_status !== 'Cancelled'">
                                 <div class="relative flex items-center justify-between pt-2">
                                     <!-- Progress Line Background -->
-                                    <div class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 rounded -z-10" :class="darkMode ? 'bg-zinc-800' : 'bg-slate-200'"></div>
+                                    <div class="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-1 rounded" :class="darkMode ? 'bg-zinc-800' : 'bg-slate-200'"></div>
                                     <!-- Progress Fill Line -->
-                                    <div class="absolute left-0 top-1/2 -translate-y-1/2 h-1 rounded -z-10 bg-primary transition-all duration-500" 
-                                        :style="order.queue_status === 'Pending' ? 'width: 0%' : (order.queue_status === 'Processing' ? 'width: 50%' : 'width: 100%')"></div>
+                                    <div class="absolute left-4 top-1/2 -translate-y-1/2 h-1 rounded bg-primary transition-all duration-500" 
+                                        :style="order.queue_status === 'Pending' ? 'width: 0%' : (order.queue_status === 'Processing' ? 'width: 50%' : 'width: calc(100% - 32px)')"></div>
 
                                     <!-- Step 1: Pending -->
                                     <div class="flex flex-col items-center">
-                                        <div class="w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold transition-all duration-300"
-                                            :class="order.queue_status === 'Pending' ? 'bg-primary border-primary text-white shadow-[0_0_10px_rgba(74,123,248,0.4)]' : 'bg-primary border-primary text-white'">
+                                        <div class="w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold transition-all duration-300 relative z-10"
+                                            :class="order.queue_status === 'Pending' ? 'bg-primary border-primary text-white shadow-[0_0_15px_rgba(74,123,248,0.5)] scale-110' : 'bg-primary border-primary text-white'">
                                             <span x-show="order.queue_status !== 'Pending'">✓</span>
                                             <span x-show="order.queue_status === 'Pending'">1</span>
                                         </div>
@@ -245,8 +261,8 @@
 
                                     <!-- Step 2: Processing -->
                                     <div class="flex flex-col items-center">
-                                        <div class="w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold transition-all duration-300"
-                                            :class="order.queue_status === 'Processing' ? 'bg-primary border-primary text-white shadow-[0_0_10px_rgba(74,123,248,0.4)]' : (order.queue_status === 'Completed' ? 'bg-primary border-primary text-white' : (darkMode ? 'bg-zinc-950 border-zinc-700 text-zinc-500' : 'bg-white border-slate-300 text-slate-400'))">
+                                        <div class="w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold transition-all duration-300 relative z-10"
+                                            :class="order.queue_status === 'Processing' ? 'bg-primary border-primary text-white shadow-[0_0_15px_rgba(74,123,248,0.5)] scale-110' : (order.queue_status === 'Completed' ? 'bg-primary border-primary text-white' : (darkMode ? 'bg-zinc-950 border-zinc-800 text-zinc-600' : 'bg-white border-slate-200 text-slate-400'))">
                                             <span x-show="order.queue_status === 'Completed'">✓</span>
                                             <span x-show="order.queue_status !== 'Completed'">2</span>
                                         </div>
@@ -255,11 +271,11 @@
 
                                     <!-- Step 3: Completed -->
                                     <div class="flex flex-col items-center">
-                                        <div class="w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold transition-all duration-300"
-                                            :class="order.queue_status === 'Completed' ? 'bg-emerald-500 border-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.4)]' : (darkMode ? 'bg-zinc-950 border-zinc-700 text-zinc-500' : 'bg-white border-slate-300 text-slate-400')">
+                                        <div class="w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold transition-all duration-300 relative z-10"
+                                            :class="order.queue_status === 'Completed' ? 'bg-emerald-500 border-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.5)] scale-110' : (darkMode ? 'bg-zinc-950 border-zinc-800 text-zinc-600' : 'bg-white border-slate-300 text-slate-400')">
                                             <span>3</span>
                                         </div>
-                                        <span class="text-[10px] sm:text-xs font-bold mt-1.5" :class="order.queue_status === 'Completed' ? 'text-emerald-500' : (darkMode ? 'text-zinc-600' : 'text-slate-400')">จัดส่งสำเร็จ</span>
+                                        <span class="text-[10px] sm:text-xs font-bold mt-1.5" :class="order.queue_status === 'Completed' ? 'text-emerald-500 font-bold' : (darkMode ? 'text-zinc-600' : 'text-slate-400')">จัดส่งสำเร็จ</span>
                                     </div>
                                 </div>
                             </template>
@@ -268,13 +284,13 @@
                             <template x-if="order.queue_status === 'Failed' || order.queue_status === 'Cancelled'">
                                 <div class="relative flex items-center justify-between pt-2">
                                     <!-- Line background -->
-                                    <div class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 rounded -z-10" :class="darkMode ? 'bg-zinc-800' : 'bg-slate-200'"></div>
-                                    <div class="absolute left-0 top-1/2 -translate-y-1/2 h-1 rounded -z-10 transition-all duration-500"
-                                        :class="order.queue_status === 'Failed' ? 'bg-rose-500 w-full' : 'bg-zinc-500 w-full'"></div>
+                                    <div class="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-1 rounded" :class="darkMode ? 'bg-zinc-800' : 'bg-slate-200'"></div>
+                                    <div class="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-1 rounded transition-all duration-500"
+                                        :class="order.queue_status === 'Failed' ? 'bg-rose-500' : 'bg-zinc-550'"></div>
 
                                     <!-- Step 1: Started -->
                                     <div class="flex flex-col items-center">
-                                        <div class="w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold bg-zinc-600 border-zinc-600 text-white">
+                                        <div class="w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold bg-zinc-650 border-zinc-650 text-white relative z-10">
                                             <span>✓</span>
                                         </div>
                                         <span class="text-[10px] sm:text-xs font-bold mt-1.5" :class="darkMode ? 'text-zinc-400' : 'text-slate-500'">รอดำเนินการ</span>
@@ -282,12 +298,12 @@
 
                                     <!-- Step 2: Failed/Cancelled Outcome -->
                                     <div class="flex flex-col items-center">
-                                        <div class="w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold text-white"
-                                            :class="order.queue_status === 'Failed' ? 'bg-rose-500 border-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.4)]' : 'bg-zinc-500 border-zinc-500'">
+                                        <div class="w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold text-white transition-all duration-300 scale-110 relative z-10"
+                                            :class="order.queue_status === 'Failed' ? 'bg-rose-500 border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.5)]' : 'bg-zinc-500 border-zinc-500'">
                                             <span x-text="order.queue_status === 'Failed' ? '✕' : '—'"></span>
                                         </div>
                                         <span class="text-[10px] sm:text-xs font-bold mt-1.5" 
-                                            :class="order.queue_status === 'Failed' ? 'text-rose-500' : (darkMode ? 'text-zinc-400' : 'text-slate-500')"
+                                            :class="order.queue_status === 'Failed' ? 'text-rose-500 font-bold' : (darkMode ? 'text-zinc-400' : 'text-slate-505')"
                                             x-text="order.queue_status === 'Failed' ? 'จัดส่งไม่สำเร็จ' : 'ยกเลิกรายการ'">
                                         </span>
                                     </div>
@@ -296,9 +312,11 @@
                         </div>
 
                         <!-- Team Note Remarks Section -->
-                        <div class="border-t pt-4 space-y-2" :class="darkMode ? 'border-zinc-800' : 'border-slate-100'">
-                            <span class="text-[10px] uppercase font-bold tracking-wider" :class="darkMode ? 'text-zinc-500' : 'text-slate-400'">หมายเหตุ / ข้อความจากทีมงาน</span>
-                            <p class="text-xs font-light leading-relaxed" :class="darkMode ? 'text-zinc-300' : 'text-slate-600'" x-text="order.notes || 'ไม่มีหมายเหตุเพิ่มเติมสำหรับรายการนี้'"></p>
+                        <div class="border-t pt-4" :class="darkMode ? 'border-zinc-800/80' : 'border-slate-100'">
+                            <div class="rounded-xl p-3.5 border text-xs" :class="darkMode ? 'bg-zinc-950/40 border-zinc-800/50 text-zinc-300' : 'bg-slate-50 border-slate-100/50 text-slate-650'">
+                                <span class="text-[10px] uppercase font-bold tracking-wider block mb-1.5" :class="darkMode ? 'text-zinc-500' : 'text-slate-400'">หมายเหตุจากทีมงาน</span>
+                                <p class="font-normal leading-relaxed" x-text="order.notes || 'ไม่มีหมายเหตุเพิ่มเติมสำหรับรายการนี้'"></p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -325,7 +343,7 @@
     </main>
 
     <!-- Footer -->
-    <footer class="border-t py-8 text-center text-xs relative z-10" :class="darkMode ? 'bg-zinc-950 border-zinc-900 text-zinc-600' : 'bg-white border-slate-200 text-slate-500'">
+    <footer class="border-t py-8 text-center text-xs relative z-10" :class="darkMode ? 'bg-[#0e0e11] border-zinc-900 text-zinc-650' : 'bg-white border-slate-200 text-slate-505'">
         <div class="max-w-7xl mx-auto px-4 space-y-2 font-light">
             <p>© 2026 checkorder. All rights reserved. • System Powered by checkorder.com</p>
         </div>
@@ -342,14 +360,31 @@
                 darkMode: true,
                 serviceClosed: false,
                 serviceClosedMessage: '',
+                currentTime: Date.now(),
 
                 init() {
                     const savedTheme = localStorage.getItem('theme');
                     if (savedTheme === 'light') {
                         this.darkMode = false;
                     }
-                    this.initStars();
                     this.checkServiceStatus();
+                    
+                    // Update timer every second
+                    setInterval(() => {
+                        this.currentTime = Date.now();
+                    }, 1000);
+
+                    // Sync settings every 10 seconds
+                    setInterval(() => {
+                        this.checkServiceStatus();
+                    }, 10000);
+
+                    // Silent auto-refresh queue results every 5 seconds if searched
+                    setInterval(() => {
+                        if (this.searched && this.username.trim() && !this.loading) {
+                            this.refreshQueueSilently();
+                        }
+                    }, 5000);
                 },
 
                 async checkServiceStatus() {
@@ -442,6 +477,24 @@
                     } finally {
                         this.loading = false;
                         this.searched = true;
+                    }
+                },
+
+                async refreshQueueSilently() {
+                    const query = this.username.trim();
+                    if (!query) return;
+
+                    try {
+                        const host = window.location.port === '3000' ? '' : 'http://localhost:3000';
+                        const response = await fetch(`${host}/api/check-queue?username=${encodeURIComponent(query)}`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.success) {
+                                this.queueResults = data.data;
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Silent refresh error:', err);
                     }
                 },
 
