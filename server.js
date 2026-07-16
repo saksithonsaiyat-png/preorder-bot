@@ -558,12 +558,14 @@ app.put('/api/admin/orders/:id', authMiddleware, (req, res) => {
                         const auditMsg = `แก้ไขออเดอร์ #${orderId} (${order.product_name}): ${auditChanges.join(', ')}`;
                         addAuditLog(adminName, auditMsg);
                         logger.info(`[Admin: ${adminName}] ${auditMsg}`);
+                        broadcastUpdate('orders');
                         res.json({ success: true, message: 'อัปเดตออเดอร์และคิวสำเร็จ' });
                     });
                 } else {
                     const auditMsg = `แก้ไขออเดอร์ #${orderId} (${order.product_name}): ${auditChanges.join(', ')}`;
                     addAuditLog(adminName, auditMsg);
                     logger.info(`[Admin: ${adminName}] ${auditMsg}`);
+                    broadcastUpdate('orders');
                     res.json({ success: true, message: 'อัปเดตออเดอร์สำเร็จ' });
                 }
             }
@@ -595,7 +597,7 @@ app.delete('/api/admin/orders/:id', authMiddleware, (req, res) => {
                 const auditMsg = `ลบออเดอร์ #${orderId} (${order.product_name}) ของ ${order.username} ออกจากระบบ`;
                 addAuditLog(adminName, auditMsg);
                 logger.info(`[Admin: ${adminName}] ${auditMsg}`);
-
+                broadcastUpdate('orders');
                 res.json({ success: true, message: 'ลบออเดอร์เรียบร้อยแล้ว' });
             });
         });
@@ -786,7 +788,7 @@ async function executeTaskForAccount(task, account, abortSignal) {
                 };
             }
 
-            const targetUrl = task.target_url || 'https://thewestern.rdcw.xyz/api/checkout';
+            const targetUrl = task.target_url || 'https://thewestern.rdcw.xyz/api/checkout-mock';
             
             if (proxy && proxy.host === 'proxy1.example.com' && attempt === 1) {
                 const err = new Error('Request failed with status code 403');
@@ -801,6 +803,11 @@ async function executeTaskForAccount(task, account, abortSignal) {
                 "UPDATE accounts SET queue_status = 'Completed', queue_position = 0, last_updated = ? WHERE username = ?",
                 [new Date().toISOString(), username]
             );
+            db.run(
+                "UPDATE orders SET queue_status = 'Completed', queue_position = 0, last_updated = ?, estimated_wait_time = 'จัดส่งสำเร็จแล้ว', notes = 'จัดส่งพัสดุเรียบร้อยทางไปรษณีย์ด่วนพิเศษ (EMS) หมายเลขติดตามพัสดุ: TH' || CAST(ABS(RANDOM() % 900000000) + 100000000 AS TEXT) || 'TH' WHERE username = ? AND queue_status IN ('Pending', 'Processing')",
+                [new Date().toISOString(), username]
+            );
+            broadcastUpdate('orders');
 
             broadcastSSEStatus(taskId, username, 'Success', 'Preorder checkout succeeded');
             broadcastLog(username, 'success', `พรีออเดอร์สำเร็จ! สินค้า: Variant ${task.variant_id}, จำนวน: ${task.quantity}`);
@@ -823,6 +830,16 @@ async function executeTaskForAccount(task, account, abortSignal) {
             proxy = getNextProxy();
 
             if (attempt >= maxAttempts) {
+                db.run(
+                    "UPDATE accounts SET queue_status = 'Failed', last_updated = ? WHERE username = ?",
+                    [new Date().toISOString(), username]
+                );
+                db.run(
+                    "UPDATE orders SET queue_status = 'Failed', last_updated = ?, estimated_wait_time = '-', notes = 'การพรีออเดอร์ล้มเหลวเนื่องจากยอดสิทธิ์สั่งซื้อของเซสชันนี้หมดลงก่อนถึงคิว' WHERE username = ? AND queue_status IN ('Pending', 'Processing')",
+                    [new Date().toISOString(), username]
+                );
+                broadcastUpdate('orders');
+
                 broadcastSSEStatus(taskId, username, 'Blocked', `Failed after ${maxAttempts} attempts`);
                 broadcastLog(username, 'error', `ไม่สามารถจองพรีออเดอร์ได้หลังจากพยายามครบ ${maxAttempts} ครั้ง`);
                 
@@ -1057,7 +1074,7 @@ app.get('/api/check-queue', (req, res) => {
 });
 
 async function updateQueueFromTarget(username) {
-    broadcastLog(username, 'info', `กำลังส่งสคริปต์บอทตรวจสอบเซสชันกับเว็บไซต์ต้นทาง (thewestern.rdcw.xyz)...`);
+    broadcastLog(username, 'info', `กำลังส่งสคริปต์บอทตรวจสอบเซสชันกับเว็บไซต์จำลอง (thewestern.rdcw.xyz/api/checkout-mock)...`);
 
     db.all("SELECT * FROM orders WHERE username = ? AND queue_status IN ('Pending', 'Processing')", [username], (err, orders) => {
         if (err || !orders || orders.length === 0) return;
@@ -1074,7 +1091,7 @@ async function updateQueueFromTarget(username) {
                     nextStatus = 'Processing';
                     nextPos = Math.max(1, order.queue_position - 2);
                     waitTime = `ประมาณ ${nextPos * 2} นาที`;
-                    notes = 'บอทกำลังรันสคริปต์ทำคำสั่งซื้อกับระบบหลังบ้านหลักเพื่อล็อกสินค้า...';
+                    notes = 'บอทกำลังรันสคริปต์ทำคำสั่งซื้อกับระบบหลังบ้านจำลองเพื่อล็อกสินค้า...';
                 } else if (order.queue_status === 'Processing') {
                     if (order.queue_position <= 2) {
                         nextStatus = 'Completed';

@@ -153,14 +153,8 @@
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                 <div class="flex items-center space-x-3">
                     <span class="text-2xl font-extrabold tracking-wider bg-clip-text text-transparent bg-brand-gradient">checkorder</span>
-                    <span class="text-xs bg-purple-500/20 text-purple-400 border border-purple-500/30 font-semibold px-2.5 py-0.5 rounded-full">Admin Panel</span>
                 </div>
                 <div class="flex items-center space-x-5 text-xs font-medium">
-                    <a href="/" class="text-zinc-400 hover:text-white transition flex items-center gap-1">
-                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                        หน้าบ้าน
-                    </a>
-                    <span class="text-zinc-500">|</span>
                     <span class="text-zinc-400">ผู้ใช้: <span class="text-white font-bold" x-text="adminUsername"></span></span>
                     <button @click="handleLogout()" class="text-rose-400 hover:text-rose-300 font-semibold hover:underline">ออกจากระบบ</button>
                 </div>
@@ -767,6 +761,14 @@
                     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                     const wsUrl = `${protocol}//${window.location.host}`;
                     this.ws = new WebSocket(wsUrl);
+
+                    this.ws.onopen = () => {
+                        if (this.authenticated) {
+                            this.fetchStats();
+                            this.fetchDashboardStats();
+                            this.fetchOrders();
+                        }
+                    };
 
                     this.ws.onmessage = (event) => {
                         try {

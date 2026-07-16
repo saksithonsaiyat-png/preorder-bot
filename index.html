@@ -72,7 +72,6 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <span class="text-2xl font-extrabold tracking-wider bg-clip-text text-transparent bg-brand-gradient">checkorder</span>
-                <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full" :class="darkMode ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-blue-50 text-blue-600 border border-blue-200'">Queue Checker</span>
             </div>
             
             <div class="flex items-center space-x-4">
@@ -88,9 +87,7 @@
                     </svg>
                 </button>
 
-                <a href="/admin" target="_blank" class="text-xs font-semibold hover:underline transition-colors" :class="darkMode ? 'text-zinc-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'">
-                    ระบบหลังบ้านแอดมิน
-                </a>
+
             </div>
         </div>
     </header>
@@ -508,6 +505,21 @@
                         hour: '2-digit',
                         minute: '2-digit'
                     });
+                },
+
+                getCountdownLabel(order) {
+                    if (['Completed', 'Failed', 'Cancelled'].includes(order.queue_status)) return '-';
+                    if (!order.wait_time_target) return 'ไม่มีเวลากำหนด';
+
+                    const target = new Date(order.wait_time_target).getTime();
+                    const diff = target - this.currentTime;
+                    if (diff <= 0) return 'ครบกำหนดแล้ว';
+
+                    const hrs = Math.floor(diff / 3600000);
+                    const mins = Math.floor((diff % 3600000) / 60000);
+                    const secs = Math.floor((diff % 60000) / 1000);
+                    if (hrs > 0) return `${hrs}:${mins < 10 ? '0' + mins : mins}:${secs < 10 ? '0' + secs : secs}`;
+                    return `${mins}:${secs < 10 ? '0' + secs : secs}`;
                 }
             };
         }
