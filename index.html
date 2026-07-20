@@ -456,7 +456,8 @@
                     this.queueResults = null;
 
                     try {
-                        const host = window.location.port === '3000' ? '' : 'http://localhost:3000';
+                        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                        const host = (isLocal && window.location.port === '5500') ? 'http://localhost:8080' : '';
                         const response = await fetch(`${host}/api/check-queue?username=${encodeURIComponent(query)}`);
                         const data = await response.json();
                         if (data.service_closed) {
@@ -482,7 +483,8 @@
                     if (!query) return;
 
                     try {
-                        const host = window.location.port === '3000' ? '' : 'http://localhost:3000';
+                        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                        const host = (isLocal && window.location.port === '5500') ? 'http://localhost:8080' : '';
                         const response = await fetch(`${host}/api/check-queue?username=${encodeURIComponent(query)}`);
                         if (response.ok) {
                             const data = await response.json();

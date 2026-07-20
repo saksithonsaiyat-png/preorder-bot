@@ -1,7 +1,50 @@
+// Auto-install and rebuild dependencies on Jelastic/Ruk-Com server if node_modules is missing or broken (e.g. Windows vs Linux upload)
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
+
+function ensureDependencies() {
+    let isBroken = false;
+    try {
+        require('sqlite3');
+    } catch (e) {
+        isBroken = true;
+        console.log('[Auto-Install] sqlite3 test require failed (expected if OS native mismatch):', e.message);
+    }
+
+    const nodeModulesPath = path.join(__dirname, 'node_modules');
+    const sqliteModulePath = path.join(nodeModulesPath, 'sqlite3');
+
+    if (!fs.existsSync(nodeModulesPath) || isBroken) {
+        console.log('[Auto-Install] node_modules is missing or native modules are broken. Starting repair process...');
+        
+        if (fs.existsSync(sqliteModulePath)) {
+            console.log('[Auto-Install] Removing existing sqlite3 module to force OS native rebuild...');
+            try {
+                fs.rmSync(sqliteModulePath, { recursive: true, force: true });
+            } catch (err) {
+                console.error('[Auto-Install] Failed to remove sqlite3 directory:', err.message);
+            }
+        }
+
+        try {
+            console.log('[Auto-Install] Running npm install --allow-scripts...');
+            execSync('npm install --allow-scripts', { stdio: 'inherit', cwd: __dirname });
+            console.log('[Auto-Install] Rebuilding native modules for current host OS...');
+            execSync('npm rebuild sqlite3 --build-from-source', { stdio: 'inherit', cwd: __dirname });
+            console.log('[Auto-Install] Dependencies installed and native modules rebuilt successfully.');
+        } catch (e) {
+            console.error('[Auto-Install] npm install/rebuild encountered an error:', e.message);
+        }
+    }
+}
+
+ensureDependencies();
+
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
-const path = require('path');
+
 const db = require('./database');
 const axios = require('axios');
 const winston = require('winston');
@@ -13,7 +56,7 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 const JWT_SECRET = process.env.JWT_SECRET || 'checkorder-admin-secret-2026';
 
 // ==========================================
