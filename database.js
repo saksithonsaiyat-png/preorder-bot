@@ -196,15 +196,21 @@ function initializeDatabase() {
 }
 
 function seedInitialData() {
-    // Seed default admin account
-    db.get("SELECT COUNT(*) as count FROM admins", [], async (err, row) => {
+    // Seed or update default admin account password to 1234
+    db.get("SELECT * FROM admins WHERE username = 'admin'", [], (err, row) => {
         if (err) return console.error(err.message);
-        if (row.count === 0) {
-            console.log('Seeding default admin account (admin / admin123)...');
-            const hash = bcrypt.hashSync('admin123', 10);
+        const hash = bcrypt.hashSync('1234', 10);
+        if (!row) {
+            console.log('Seeding default admin account (admin / 1234)...');
             db.run(
                 "INSERT INTO admins (username, password_hash) VALUES (?, ?)",
                 ['admin', hash]
+            );
+        } else {
+            console.log('Updating admin password to 1234...');
+            db.run(
+                "UPDATE admins SET password_hash = ? WHERE username = 'admin'",
+                [hash]
             );
         }
     });
