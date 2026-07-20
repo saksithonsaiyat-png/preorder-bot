@@ -1,4 +1,4 @@
-module.exports = {
+ecosystem.config.jsmodule.exports = {
   apps: [
     {
       name: "preorder-bot",
