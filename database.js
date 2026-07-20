@@ -1,15 +1,107 @@
-const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const bcrypt = require('bcryptjs');
 
 const dbPath = path.resolve(__dirname, 'checkorder.db');
-const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-        console.error('Error opening database:', err.message);
-    } else {
-        console.log('Connected to the SQLite database.');
-    }
-});
+let db;
+
+try {
+    const { DatabaseSync } = require('node:sqlite');
+    console.log('[Database] Using Node.js built-in node:sqlite (Zero C++ dependency)');
+    const nativeDb = new DatabaseSync(dbPath);
+
+    db = {
+        serialize(cb) {
+            if (cb) cb();
+        },
+        run(sql, params, cb) {
+            if (typeof params === 'function') {
+                cb = params;
+                params = [];
+            }
+            params = params || [];
+            try {
+                const stmt = nativeDb.prepare(sql);
+                const res = stmt.run(...params);
+                if (cb) cb.call({ lastID: Number(res.lastInsertRowid || 0), changes: res.changes || 0 }, null);
+            } catch (err) {
+                console.error('[DB Error] run failed:', err.message, '| SQL:', sql);
+                if (cb) cb(err);
+            }
+        },
+        get(sql, params, cb) {
+            if (typeof params === 'function') {
+                cb = params;
+                params = [];
+            }
+            params = params || [];
+            try {
+                const stmt = nativeDb.prepare(sql);
+                const row = stmt.get(...params);
+                if (cb) cb(null, row || undefined);
+            } catch (err) {
+                console.error('[DB Error] get failed:', err.message, '| SQL:', sql);
+                if (cb) cb(err, null);
+            }
+        },
+        all(sql, params, cb) {
+            if (typeof params === 'function') {
+                cb = params;
+                params = [];
+            }
+            params = params || [];
+            try {
+                const stmt = nativeDb.prepare(sql);
+                const rows = stmt.all(...params);
+                if (cb) cb(null, rows || []);
+            } catch (err) {
+                console.error('[DB Error] all failed:', err.message, '| SQL:', sql);
+                if (cb) cb(err, []);
+            }
+        },
+        prepare(sql) {
+            try {
+                const stmt = nativeDb.prepare(sql);
+                return {
+                    run(...args) {
+                        let cb = null;
+                        if (args.length > 0 && typeof args[args.length - 1] === 'function') {
+                            cb = args.pop();
+                        }
+                        try {
+                            const res = stmt.run(...args);
+                            if (cb) cb.call({ lastID: Number(res.lastInsertRowid || 0), changes: res.changes || 0 }, null);
+                        } catch (err) {
+                            console.error('[DB Error] stmt.run failed:', err.message, '| SQL:', sql);
+                            if (cb) cb(err);
+                        }
+                    },
+                    finalize(cb) {
+                        if (cb) cb();
+                    }
+                };
+            } catch (err) {
+                console.error('[DB Error] prepare failed:', err.message, '| SQL:', sql);
+                return {
+                    run(...args) {
+                        let cb = typeof args[args.length - 1] === 'function' ? args.pop() : null;
+                        if (cb) cb(err);
+                    },
+                    finalize(cb) { if (cb) cb(); }
+                };
+            }
+        }
+    };
+} catch (e) {
+    console.log('[Database] node:sqlite unavailable, falling back to sqlite3 package...');
+    const sqlite3 = require('sqlite3').verbose();
+    db = new sqlite3.Database(dbPath, (err) => {
+        if (err) {
+            console.error('Error opening database:', err.message);
+        } else {
+            console.log('Connected to the SQLite database.');
+        }
+    });
+}
 
 initializeDatabase();
 
