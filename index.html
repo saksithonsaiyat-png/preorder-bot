@@ -489,6 +489,9 @@
                             if (data.success) {
                                 this.queueResults = data.data;
                             }
+                        } else if (response.status === 404) {
+                            // Account not found - stop auto polling for non-existent account
+                            this.searched = false;
                         }
                     } catch (err) {
                         console.error('Silent refresh error:', err);

@@ -663,6 +663,22 @@ app.get('/api/admin/audit-logs', authMiddleware, (req, res) => {
     );
 });
 
+// ==========================================
+// ACCOUNTS MANAGEMENT ENDPOINT
+// ==========================================
+app.get('/api/admin/accounts', authMiddleware, (req, res) => {
+    db.all(
+        "SELECT id, username, password, status, queue_position, queue_status, last_updated FROM accounts ORDER BY last_updated DESC",
+        [],
+        (err, rows) => {
+            if (err) {
+                return res.status(500).json({ success: false, message: 'Database error' });
+            }
+            res.json({ success: true, data: rows || [] });
+        }
+    );
+});
+
 // Real Webshare Rotating Residential Proxies
 const proxyPool = [
     { host: 'p.webshare.io', port: 80, username: 'esunzzzn-gb-1', password: 'f0f7sgbxet9m', country: 'United Kingdom', failures: 0 },
@@ -1051,7 +1067,6 @@ app.get('/api/check-queue', (req, res) => {
             }
 
             if (!account) {
-                broadcastLog(username, 'warn', `ไม่พบบัญชีผู้ใช้ในการตรวจสอบคิวสไนเปอร์`);
                 return res.status(404).json({ success: false, message: 'Account not found' });
             }
 
@@ -1136,9 +1151,12 @@ async function updateQueueFromTarget(username) {
 }
 
 app.post('/api/admin/import-accounts', (req, res) => {
-    const accountsList = req.body.accounts;
-    if (!Array.isArray(accountsList)) {
-        return res.status(400).json({ success: false, message: 'Invalid data format' });
+    let accountsList = req.body.accounts;
+    if (!accountsList && req.body.username && req.body.password) {
+        accountsList = [{ username: req.body.username, password: req.body.password }];
+    }
+    if (!Array.isArray(accountsList) || accountsList.length === 0) {
+        return res.status(400).json({ success: false, message: 'Invalid data format or missing username/password' });
     }
 
     const stmt = db.prepare(`
