@@ -6,6 +6,7 @@ const WebSocket = require('ws');
 
 const db = require('./database');
 const axios = require('axios');
+const { HttpsProxyAgent } = require('https-proxy-agent');
 const winston = require('winston');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -662,13 +663,18 @@ app.get('/api/admin/audit-logs', authMiddleware, (req, res) => {
     );
 });
 
-// ==========================================
-// 6. Proxy & Session Management Pool
-// ==========================================
+// Real Webshare Rotating Residential Proxies
 const proxyPool = [
-    { host: 'proxy1.example.com', port: 8080, username: 'user1', password: 'pass1', failures: 0 },
-    { host: 'proxy2.example.com', port: 3128, username: 'user2', password: 'pass2', failures: 0 },
-    { host: 'proxy3.example.com', port: 8000, username: 'user3', password: 'pass3', failures: 0 }
+    { host: 'p.webshare.io', port: 80, username: 'esunzzzn-gb-1', password: 'f0f7sgbxet9m', country: 'United Kingdom', failures: 0 },
+    { host: 'p.webshare.io', port: 80, username: 'esunzzzn-ca-2', password: 'f0f7sgbxet9m', country: 'Canada', failures: 0 },
+    { host: 'p.webshare.io', port: 80, username: 'esunzzzn-de-3', password: 'f0f7sgbxet9m', country: 'Germany', failures: 0 },
+    { host: 'p.webshare.io', port: 80, username: 'esunzzzn-fr-4', password: 'f0f7sgbxet9m', country: 'France', failures: 0 },
+    { host: 'p.webshare.io', port: 80, username: 'esunzzzn-au-5', password: 'f0f7sgbxet9m', country: 'Australia', failures: 0 },
+    { host: 'p.webshare.io', port: 80, username: 'esunzzzn-nl-6', password: 'f0f7sgbxet9m', country: 'Netherlands', failures: 0 },
+    { host: 'p.webshare.io', port: 80, username: 'esunzzzn-it-7', password: 'f0f7sgbxet9m', country: 'Italy', failures: 0 },
+    { host: 'p.webshare.io', port: 80, username: 'esunzzzn-es-8', password: 'f0f7sgbxet9m', country: 'Spain', failures: 0 },
+    { host: 'p.webshare.io', port: 80, username: 'esunzzzn-be-9', password: 'f0f7sgbxet9m', country: 'Belgium', failures: 0 },
+    { host: 'p.webshare.io', port: 80, username: 'esunzzzn-at-10', password: 'f0f7sgbxet9m', country: 'Austria', failures: 0 }
 ];
 let currentProxyIndex = 0;
 
@@ -780,23 +786,12 @@ async function executeTaskForAccount(task, account, abortSignal) {
             };
 
             if (proxy) {
-                axiosConfig.proxy = {
-                    host: proxy.host,
-                    port: proxy.port,
-                    auth: {
-                        username: proxy.username,
-                        password: proxy.password
-                    }
-                };
+                const proxyUrl = `http://${proxy.username}:${proxy.password}@${proxy.host}:${proxy.port}`;
+                axiosConfig.httpsAgent = new HttpsProxyAgent(proxyUrl);
+                axiosConfig.proxy = false; // Disable axios default proxy handling in favor of HttpsProxyAgent
             }
 
             const targetUrl = task.target_url || 'https://thewestern.rdcw.xyz/api/checkout-mock';
-            
-            if (proxy && proxy.host === 'proxy1.example.com' && attempt === 1) {
-                const err = new Error('Request failed with status code 403');
-                err.response = { status: 403 };
-                throw err;
-            }
 
             logger.info(`Sending checkout post request to target: ${targetUrl}`);
             checkoutSuccess = true;
