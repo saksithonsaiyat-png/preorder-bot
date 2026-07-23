@@ -685,6 +685,19 @@ function getNextProxy() {
     return proxy;
 }
 
+function createProxyAxiosConfig(proxy, extraConfig = {}) {
+    const axiosConfig = {
+        timeout: 10000,
+        ...extraConfig
+    };
+    if (proxy) {
+        const proxyUrl = `http://${proxy.username}:${proxy.password}@${proxy.host}:${proxy.port}`;
+        axiosConfig.httpsAgent = new HttpsProxyAgent(proxyUrl);
+        axiosConfig.proxy = false; // Disable default proxy handling in favor of HttpsProxyAgent
+    }
+    return axiosConfig;
+}
+
 // ==========================================
 // 4. Notification Webhook Helper
 // ==========================================
@@ -780,16 +793,7 @@ async function executeTaskForAccount(task, account, abortSignal) {
         logger.info(`Attempt ${attempt} for account ${username} using proxy ${proxy ? proxy.host : 'none'}`);
 
         try {
-            const axiosConfig = {
-                timeout: 10000,
-                signal: abortSignal
-            };
-
-            if (proxy) {
-                const proxyUrl = `http://${proxy.username}:${proxy.password}@${proxy.host}:${proxy.port}`;
-                axiosConfig.httpsAgent = new HttpsProxyAgent(proxyUrl);
-                axiosConfig.proxy = false; // Disable axios default proxy handling in favor of HttpsProxyAgent
-            }
+            const axiosConfig = createProxyAxiosConfig(proxy, { signal: abortSignal });
 
             const targetUrl = task.target_url || 'https://thewestern.rdcw.xyz/api/checkout-mock';
 
