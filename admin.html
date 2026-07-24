@@ -765,10 +765,20 @@
                     }, 10000);
                 },
 
-                // ====== DATA FETCH METHODS ======
+                // ====== AUTH & DATA FETCH METHODS ======
+                checkAuthResponse(res) {
+                    if (res && res.status === 401) {
+                        this.showToast('เซสชันผู้ดูแลระบบหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง', 'error');
+                        setTimeout(() => this.handleLogout(), 1500);
+                        return false;
+                    }
+                    return true;
+                },
+
                 async fetchAccounts() {
                     try {
                         const res = await fetch('/api/admin/accounts', { headers: this.getHeaders() });
+                        if (!this.checkAuthResponse(res)) return;
                         if (res.ok) {
                             const result = await res.json();
                             if (result.success) this.customerAccounts = result.data || [];
@@ -790,6 +800,7 @@
                                 password: this.accountForm.password.trim()
                             })
                         });
+                        if (!this.checkAuthResponse(res)) return;
                         const data = await res.json();
                         if (data.success) {
                             this.showToast(`ผูกบัญชี ${this.accountForm.username} เรียบร้อยแล้ว`, 'success');
@@ -816,6 +827,7 @@
                 async fetchDashboardStats() {
                     try {
                         const res = await fetch('/api/admin/dashboard-stats', { headers: this.getHeaders() });
+                        if (!this.checkAuthResponse(res)) return;
                         if (res.ok) {
                             const result = await res.json();
                             if (result.success) this.dashboardStats = result.data;
@@ -826,6 +838,7 @@
                 async fetchOrders() {
                     try {
                         const res = await fetch('/api/admin/orders', { headers: this.getHeaders() });
+                        if (!this.checkAuthResponse(res)) return;
                         if (res.ok) {
                             const result = await res.json();
                             if (result.success) this.orders = result.data;

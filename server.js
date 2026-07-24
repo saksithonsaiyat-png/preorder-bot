@@ -969,7 +969,7 @@ function reloadScheduledTasks() {
     });
 }
 
-app.post('/api/admin/tasks', (req, res) => {
+app.post('/api/admin/tasks', authMiddleware, (req, res) => {
     const { target_url, variant_id, quantity, execution_time } = req.body;
 
     if (!target_url || !variant_id || !execution_time) {
@@ -977,7 +977,39 @@ app.post('/api/admin/tasks', (req, res) => {
     }
 
     const qty = parseInt(quantity) || 1;
-    // ==========================================
+
+    db.run(
+        "INSERT INTO tasks (target_url, variant_id, quantity, execution_time, status) VALUES (?, ?, ?, ?, 'pending')",
+        [target_url, variant_id, qty, execution_time],
+        function (err) {
+            if (err) {
+                logger.error(`Database error inserting task: ${err.message}`);
+                return res.status(500).json({ success: false, message: 'Database insert failed' });
+            }
+
+            const newTaskId = this.lastID;
+            const newTask = {
+                id: newTaskId,
+                target_url,
+                variant_id,
+                quantity: qty,
+                execution_time,
+                status: 'pending'
+            };
+
+            logger.info(`Preorder task created: ID ${newTaskId}, Target ${target_url}, execution time: ${execution_time}`);
+            scheduleTask(newTask);
+
+            res.json({
+                success: true,
+                message: 'Preorder task scheduled successfully',
+                data: newTask
+            });
+        }
+    );
+});
+
+// ==========================================
 // TARGET WEBSITE (thewestern.rdcw.xyz) MOCK & SCRAPER ENGINE
 // ==========================================
 const TARGET_BASE_URL = process.env.TARGET_BASE_URL || 'https://thewestern.rdcw.xyz';
@@ -1039,7 +1071,6 @@ async function loginTargetAccount(account) {
         try {
             response = await axios.post(loginEndpoint, { username, password }, axiosConfig);
         } catch (targetErr) {
-            // Fallback to local target-mock endpoint if target domain is unreachable or mock endpoint
             const mockUrl = `http://localhost:${PORT}/api/target-mock/login`;
             response = await axios.post(mockUrl, { username, password });
         }
@@ -1088,7 +1119,6 @@ async function fetchTargetOrders(account, sessionToken) {
         try {
             response = await axios.get(ordersEndpoint, axiosConfig);
         } catch (targetErr) {
-            // Fallback to mock API if target server API is not available
             const mockUrl = `http://localhost:${PORT}/api/target-mock/orders?username=${encodeURIComponent(username)}`;
             response = await axios.get(mockUrl);
         }
@@ -1182,37 +1212,6 @@ async function syncAccountTargetData(username) {
         });
     });
 }
-
-    db.run(
-        "INSERT INTO tasks (target_url, variant_id, quantity, execution_time, status) VALUES (?, ?, ?, ?, 'pending')",
-        [target_url, variant_id, qty, execution_time],
-        function (err) {
-            if (err) {
-                logger.error(`Database error inserting task: ${err.message}`);
-                return res.status(500).json({ success: false, message: 'Database insert failed' });
-            }
-
-            const newTaskId = this.lastID;
-            const newTask = {
-                id: newTaskId,
-                target_url,
-                variant_id,
-                quantity: qty,
-                execution_time,
-                status: 'pending'
-            };
-
-            logger.info(`Preorder task created: ID ${newTaskId}, Target ${target_url}, execution time: ${execution_time}`);
-            scheduleTask(newTask);
-
-            res.json({
-                success: true,
-                message: 'Preorder task scheduled successfully',
-                data: newTask
-            });
-        }
-    );
-});
 
 // ==========================================
 // 8. Server Resource Monitor
