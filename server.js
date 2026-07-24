@@ -1033,21 +1033,21 @@ app.post('/api/target-mock/login', (req, res) => {
 
 app.get('/api/target-mock/orders', (req, res) => {
     const username = req.query.username || 'TEST4455';
-    const initialQueue = Math.floor(Math.random() * 20) + 1;
-    const waitTarget = new Date(Date.now() + initialQueue * 2 * 60 * 1000).toISOString();
+    const initialQueue = 3;
+    const waitTarget = new Date(Date.now() + 6 * 60 * 1000).toISOString();
 
-    logger.info(`[Target Mock] Returning order items for target user: ${username}`);
+    logger.info(`[Target Mock] Returning MONOMAX preorder items for target user: ${username}`);
     return res.json({
         success: true,
         data: [
             {
-                product_name: 'สินค้าพรีออเดอร์ (รายการจองสิทธิ์)',
-                product_image: 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=300&q=80',
+                product_name: 'MONOMAX [พรีออเดอร์] SPORTS BASIC 30 DAYS - เซ็ต 5 แอค',
+                product_image: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=300&q=80',
                 queue_position: initialQueue,
-                queue_status: 'Pending',
-                estimated_wait_time: `ประมาณ ${initialQueue * 2} นาที`,
-                notes: 'เชื่อมต่อและซิงค์ข้อมูลจากระบบเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
-                buyer_notes: 'รายการพรีออเดอร์ผ่านบัญชีผูกในระบบ',
+                queue_status: 'Processing',
+                estimated_wait_time: 'ประมาณ 6 นาที',
+                notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MONOMAX จากระบบเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
+                buyer_notes: 'SPORTS BASIC 30 DAYS - เซ็ต 5 แอค',
                 wait_time_target: waitTarget
             }
         ]
@@ -1100,7 +1100,7 @@ async function fetchTargetOrders(account, sessionToken) {
     const proxy = getNextProxy();
     const username = account.username;
 
-    broadcastLog(username, 'info', `[Scraper] กำลังเชื่อมต่อ API เพื่อดึงข้อมูลสินค้าพรีออเดอร์จริงของ ${username}...`);
+    broadcastLog(username, 'info', `[Scraper] กำลังเชื่อมต่อ API เพื่อดึงข้อมูลสินค้าพรีออเดอร์ MONOMAX ของ ${username}...`);
 
     try {
         const axiosConfig = createProxyAxiosConfig(proxy, {
@@ -1135,6 +1135,7 @@ async function fetchTargetOrders(account, sessionToken) {
                         if (existingOrder) {
                             db.run(
                                 `UPDATE orders SET 
+                                    product_image = ?,
                                     queue_position = ?, 
                                     queue_status = ?, 
                                     estimated_wait_time = ?, 
@@ -1144,9 +1145,10 @@ async function fetchTargetOrders(account, sessionToken) {
                                     last_updated = ? 
                                  WHERE id = ?`,
                                 [
-                                    remoteOrder.queue_position || 0,
-                                    remoteOrder.queue_status || 'Pending',
-                                    remoteOrder.estimated_wait_time || '-',
+                                    remoteOrder.product_image || 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=300&q=80',
+                                    remoteOrder.queue_position || 3,
+                                    remoteOrder.queue_status || 'Processing',
+                                    remoteOrder.estimated_wait_time || 'ประมาณ 6 นาที',
                                     remoteOrder.notes || '',
                                     remoteOrder.buyer_notes || '',
                                     remoteOrder.wait_time_target || null,
@@ -1161,10 +1163,10 @@ async function fetchTargetOrders(account, sessionToken) {
                                 [
                                     username,
                                     remoteOrder.product_name,
-                                    remoteOrder.product_image || 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=300&q=80',
-                                    remoteOrder.queue_position || 1,
-                                    remoteOrder.queue_status || 'Pending',
-                                    remoteOrder.estimated_wait_time || 'ประมาณ 10 นาที',
+                                    remoteOrder.product_image || 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=300&q=80',
+                                    remoteOrder.queue_position || 3,
+                                    remoteOrder.queue_status || 'Processing',
+                                    remoteOrder.estimated_wait_time || 'ประมาณ 6 นาที',
                                     remoteOrder.notes || 'ดึงและซิงค์ข้อมูลจากเว็บต้นทางเรียบร้อยแล้ว',
                                     remoteOrder.buyer_notes || '',
                                     now,
@@ -1177,7 +1179,7 @@ async function fetchTargetOrders(account, sessionToken) {
                 );
             });
 
-            broadcastLog(username, 'success', `[Scraper] ซิงค์ข้อมูลออเดอร์พรีออเดอร์ ${remoteOrders.length} รายการจากเว็บต้นทางสำเร็จ!`);
+            broadcastLog(username, 'success', `[Scraper] ซิงค์ข้อมูลพรีออเดอร์ MONOMAX ${remoteOrders.length} รายการจากเว็บต้นทางสำเร็จ!`);
             broadcastUpdate('orders');
             return { success: true, count: remoteOrders.length };
         } else {

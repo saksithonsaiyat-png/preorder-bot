@@ -196,6 +196,7 @@
                                     </span>
                                 </div>
                                 <h3 class="text-base font-extrabold mt-1" :class="darkMode ? 'text-white' : 'text-slate-900'" x-text="order.product_name"></h3>
+                                <p x-show="order.buyer_notes" class="text-xs font-medium text-amber-500/90 mt-0.5" x-text="order.buyer_notes"></p>
                             </div>
                         </div>
                         <div class="text-left md:text-right text-xs">
