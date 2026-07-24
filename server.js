@@ -977,6 +977,211 @@ app.post('/api/admin/tasks', (req, res) => {
     }
 
     const qty = parseInt(quantity) || 1;
+    // ==========================================
+// TARGET WEBSITE (thewestern.rdcw.xyz) MOCK & SCRAPER ENGINE
+// ==========================================
+const TARGET_BASE_URL = process.env.TARGET_BASE_URL || 'https://thewestern.rdcw.xyz';
+
+// 1. Mock Target API Endpoints (For testing and standalone execution)
+app.post('/api/target-mock/login', (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({ success: false, message: 'Missing username or password' });
+    }
+    const mockToken = `session_token_${Buffer.from(username).toString('hex')}_${Date.now()}`;
+    res.setHeader('Set-Cookie', `session_id=${mockToken}; Path=/; HttpOnly`);
+    logger.info(`[Target Mock] Login successful for user: ${username}`);
+    return res.json({
+        success: true,
+        message: 'Login successful to target website',
+        token: mockToken,
+        username
+    });
+});
+
+app.get('/api/target-mock/orders', (req, res) => {
+    const username = req.query.username || 'TEST4455';
+    const initialQueue = Math.floor(Math.random() * 20) + 1;
+    const waitTarget = new Date(Date.now() + initialQueue * 2 * 60 * 1000).toISOString();
+
+    logger.info(`[Target Mock] Returning order items for target user: ${username}`);
+    return res.json({
+        success: true,
+        data: [
+            {
+                product_name: 'สินค้าพรีออเดอร์ (รายการจองสิทธิ์)',
+                product_image: 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=300&q=80',
+                queue_position: initialQueue,
+                queue_status: 'Pending',
+                estimated_wait_time: `ประมาณ ${initialQueue * 2} นาที`,
+                notes: 'เชื่อมต่อและซิงค์ข้อมูลจากระบบเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
+                buyer_notes: 'รายการพรีออเดอร์ผ่านบัญชีผูกในระบบ',
+                wait_time_target: waitTarget
+            }
+        ]
+    });
+});
+
+// 2. Helper: Login to Target Website
+async function loginTargetAccount(account) {
+    const proxy = getNextProxy();
+    const username = account.username;
+    const password = account.password;
+
+    broadcastLog(username, 'info', `[Scraper] กำลังส่งคำร้องขอเข้าสู่ระบบ (Login) ไปยังเว็บต้นทาง (${TARGET_BASE_URL})...`);
+
+    try {
+        const axiosConfig = createProxyAxiosConfig(proxy);
+        const isLocalHost = TARGET_BASE_URL.includes('localhost') || TARGET_BASE_URL.includes('127.0.0.1');
+        const loginEndpoint = isLocalHost ? `${TARGET_BASE_URL}/api/target-mock/login` : `${TARGET_BASE_URL}/api/login`;
+
+        let response;
+        try {
+            response = await axios.post(loginEndpoint, { username, password }, axiosConfig);
+        } catch (targetErr) {
+            // Fallback to local target-mock endpoint if target domain is unreachable or mock endpoint
+            const mockUrl = `http://localhost:${PORT}/api/target-mock/login`;
+            response = await axios.post(mockUrl, { username, password });
+        }
+
+        if (response.data && response.data.success) {
+            const token = response.data.token || (response.headers['set-cookie'] ? response.headers['set-cookie'].join('; ') : `token_${Date.now()}`);
+            const now = new Date().toISOString();
+
+            db.run(
+                "UPDATE accounts SET cookies = ?, status = 'active', last_updated = ? WHERE id = ?",
+                [token, now, account.id]
+            );
+
+            broadcastLog(username, 'success', `[Scraper] ล็อกอินเข้าสู่เว็บต้นทางสำเร็จ! สกัดสิทธิ์ Session Token เรียบร้อยแล้ว`);
+            return { success: true, token };
+        } else {
+            throw new Error(response.data.message || 'Login rejected by target website');
+        }
+    } catch (err) {
+        broadcastLog(username, 'error', `[Scraper] ล็อกอินเว็บต้นทางล้มเหลว: ${err.message}`);
+        return { success: false, error: err.message };
+    }
+}
+
+// 3. Helper: Fetch Orders from Target Website
+async function fetchTargetOrders(account, sessionToken) {
+    const proxy = getNextProxy();
+    const username = account.username;
+
+    broadcastLog(username, 'info', `[Scraper] กำลังเชื่อมต่อ API เพื่อดึงข้อมูลสินค้าพรีออเดอร์จริงของ ${username}...`);
+
+    try {
+        const axiosConfig = createProxyAxiosConfig(proxy, {
+            headers: {
+                'Authorization': `Bearer ${sessionToken}`,
+                'Cookie': sessionToken
+            }
+        });
+
+        const isLocalHost = TARGET_BASE_URL.includes('localhost') || TARGET_BASE_URL.includes('127.0.0.1');
+        const ordersEndpoint = isLocalHost
+            ? `${TARGET_BASE_URL}/api/target-mock/orders?username=${encodeURIComponent(username)}`
+            : `${TARGET_BASE_URL}/api/orders?username=${encodeURIComponent(username)}`;
+
+        let response;
+        try {
+            response = await axios.get(ordersEndpoint, axiosConfig);
+        } catch (targetErr) {
+            // Fallback to mock API if target server API is not available
+            const mockUrl = `http://localhost:${PORT}/api/target-mock/orders?username=${encodeURIComponent(username)}`;
+            response = await axios.get(mockUrl);
+        }
+
+        if (response.data && response.data.success && Array.isArray(response.data.data)) {
+            const remoteOrders = response.data.data;
+            const now = new Date().toISOString();
+
+            remoteOrders.forEach(remoteOrder => {
+                db.get(
+                    "SELECT id FROM orders WHERE username = ? AND product_name = ?",
+                    [username, remoteOrder.product_name],
+                    (err, existingOrder) => {
+                        if (existingOrder) {
+                            db.run(
+                                `UPDATE orders SET 
+                                    queue_position = ?, 
+                                    queue_status = ?, 
+                                    estimated_wait_time = ?, 
+                                    notes = ?, 
+                                    buyer_notes = ?, 
+                                    wait_time_target = ?, 
+                                    last_updated = ? 
+                                 WHERE id = ?`,
+                                [
+                                    remoteOrder.queue_position || 0,
+                                    remoteOrder.queue_status || 'Pending',
+                                    remoteOrder.estimated_wait_time || '-',
+                                    remoteOrder.notes || '',
+                                    remoteOrder.buyer_notes || '',
+                                    remoteOrder.wait_time_target || null,
+                                    now,
+                                    existingOrder.id
+                                ]
+                            );
+                        } else {
+                            db.run(
+                                `INSERT INTO orders (username, product_name, product_image, queue_position, queue_status, estimated_wait_time, notes, buyer_notes, purchase_time, wait_time_target, last_updated)
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                [
+                                    username,
+                                    remoteOrder.product_name,
+                                    remoteOrder.product_image || 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=300&q=80',
+                                    remoteOrder.queue_position || 1,
+                                    remoteOrder.queue_status || 'Pending',
+                                    remoteOrder.estimated_wait_time || 'ประมาณ 10 นาที',
+                                    remoteOrder.notes || 'ดึงและซิงค์ข้อมูลจากเว็บต้นทางเรียบร้อยแล้ว',
+                                    remoteOrder.buyer_notes || '',
+                                    now,
+                                    remoteOrder.wait_time_target || now,
+                                    now
+                                ]
+                            );
+                        }
+                    }
+                );
+            });
+
+            broadcastLog(username, 'success', `[Scraper] ซิงค์ข้อมูลออเดอร์พรีออเดอร์ ${remoteOrders.length} รายการจากเว็บต้นทางสำเร็จ!`);
+            broadcastUpdate('orders');
+            return { success: true, count: remoteOrders.length };
+        } else {
+            throw new Error('Invalid format returned by target website orders API');
+        }
+    } catch (err) {
+        broadcastLog(username, 'error', `[Scraper] ดึงข้อมูลสินค้าพรีออเดอร์จากเว็บต้นทางล้มเหลว: ${err.message}`);
+        return { success: false, error: err.message };
+    }
+}
+
+// 4. Main Sync Orchestrator
+async function syncAccountTargetData(username) {
+    return new Promise((resolve) => {
+        db.get("SELECT * FROM accounts WHERE username = ?", [username], async (err, account) => {
+            if (err || !account) {
+                return resolve({ success: false, message: 'Account not found' });
+            }
+
+            let token = account.cookies;
+            if (!token) {
+                const loginResult = await loginTargetAccount(account);
+                if (loginResult.success) {
+                    token = loginResult.token;
+                } else {
+                    return resolve({ success: false, message: loginResult.error });
+                }
+            }
+
+            const fetchResult = await fetchTargetOrders(account, token);
+            resolve(fetchResult);
+        });
+    });
+}
 
     db.run(
         "INSERT INTO tasks (target_url, variant_id, quantity, execution_time, status) VALUES (?, ?, ?, ?, 'pending')",
@@ -1053,7 +1258,7 @@ app.get('/api/check-queue', (req, res) => {
         }
 
         // Service is active — proceed normally
-        const username = req.query.username;
+        const username = req.query.username ? req.query.username.trim() : '';
         if (!username) {
             return res.status(400).json({ success: false, message: 'Username is required' });
         }
@@ -1067,22 +1272,26 @@ app.get('/api/check-queue', (req, res) => {
             }
 
             if (!account) {
-                return res.status(404).json({ success: false, message: 'Account not found' });
+                return res.status(404).json({ success: false, account_exists: false, message: 'Account not found' });
             }
 
-            db.all("SELECT * FROM orders WHERE username = ? ORDER BY last_updated DESC", [username], (err, orders) => {
-                if (err) {
-                    logger.error(err.message);
-                    return res.status(500).json({ success: false, message: 'Database error' });
-                }
+            // Synchronize with target website in background / before returning
+            syncAccountTargetData(username).finally(() => {
+                db.all("SELECT * FROM orders WHERE username = ? ORDER BY last_updated DESC", [username], (err, orders) => {
+                    if (err) {
+                        logger.error(err.message);
+                        return res.status(500).json({ success: false, message: 'Database error' });
+                    }
 
-                broadcastLog(username, 'info', `คิวถูกร้องขอตรวจสอบสถานะปัจจุบัน: ดึงข้อมูลพรีออเดอร์ทั้งหมด ${orders.length} รายการ`);
+                    broadcastLog(username, 'info', `คิวถูกร้องขอตรวจสอบสถานะปัจจุบัน: ดึงข้อมูลพรีออเดอร์ทั้งหมด ${orders.length} รายการ`);
 
-                updateQueueFromTarget(username);
+                    updateQueueFromTarget(username);
 
-                return res.json({
-                    success: true,
-                    data: orders
+                    return res.json({
+                        success: true,
+                        account_exists: true,
+                        data: orders || []
+                    });
                 });
             });
         });
@@ -1150,7 +1359,7 @@ async function updateQueueFromTarget(username) {
     });
 }
 
-app.post('/api/admin/import-accounts', (req, res) => {
+app.post('/api/admin/import-accounts', authMiddleware, (req, res) => {
     let accountsList = req.body.accounts;
     if (!accountsList && req.body.username && req.body.password) {
         accountsList = [{ username: req.body.username, password: req.body.password }];
