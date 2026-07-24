@@ -318,7 +318,7 @@
             </template>
 
             <!-- Error Not Found Card -->
-            <template x-if="!queueResults || queueResults.length === 0">
+            <template x-if="searched && accountNotFound">
                 <div class="border rounded-xl shadow-lg p-8 text-center space-y-4" :class="darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-slate-200'">
                     <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/20">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -328,7 +328,24 @@
                     <div class="space-y-1">
                         <h3 class="text-base font-bold" :class="darkMode ? 'text-zinc-200' : 'text-slate-800'">ไม่พบบัญชีผู้ใช้ในระบบ</h3>
                         <p class="text-xs max-w-sm mx-auto font-light" :class="darkMode ? 'text-zinc-400' : 'text-slate-500'">
-                            ไม่พบคลังข้อมูลคิวสั่งซื้อสำหรับชื่อผู้ใช้ "<span class="font-semibold" :class="darkMode ? 'text-zinc-300' : 'text-slate-700'" x-text="username"></span>" กรุณาตรวจสอบหรือแจ้งทีมแอดมินอีกครั้ง
+                            ไม่พบข้อมูลคิวสั่งซื้อสำหรับชื่อผู้ใช้ "<span class="font-semibold" :class="darkMode ? 'text-zinc-300' : 'text-slate-700'" x-text="username"></span>" กรุณาตรวจสอบหรือแจ้งทีมแอดมินอีกครั้ง
+                        </p>
+                    </div>
+                </div>
+            </template>
+
+            <!-- No Active Orders Card (Account exists but empty orders) -->
+            <template x-if="searched && !accountNotFound && queueResults && queueResults.length === 0">
+                <div class="border rounded-xl shadow-lg p-8 text-center space-y-4" :class="darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-slate-200'">
+                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="space-y-1">
+                        <h3 class="text-base font-bold" :class="darkMode ? 'text-zinc-200' : 'text-slate-800'">พบบัญชีในระบบ แต่ยังไม่มีคิวคำสั่งซื้อ</h3>
+                        <p class="text-xs max-w-sm mx-auto font-light" :class="darkMode ? 'text-zinc-400' : 'text-slate-500'">
+                            บัญชีผู้ใช้ "<span class="font-semibold" :class="darkMode ? 'text-zinc-300' : 'text-slate-700'" x-text="username"></span>" ลงทะเบียนเรียบร้อยแล้ว อยู่ในระหว่างรอระบบประมวลผลคำสั่งซื้อ
                         </p>
                     </div>
                 </div>
@@ -351,6 +368,7 @@
                 username: '',
                 loading: false,
                 searched: false,
+                accountNotFound: false,
                 queueResults: null,
                 darkMode: true,
                 serviceClosed: false,
@@ -451,6 +469,7 @@
 
                     this.loading = true;
                     this.searched = false;
+                    this.accountNotFound = false;
                     this.queueResults = null;
 
                     try {
@@ -462,14 +481,20 @@
                             this.serviceClosed = true;
                             this.serviceClosedMessage = data.message;
                             this.queueResults = [];
+                        } else if (response.status === 404 || (data.account_exists === false && !data.success)) {
+                            this.accountNotFound = true;
+                            this.queueResults = [];
                         } else if (data.success) {
-                            this.queueResults = data.data;
+                            this.accountNotFound = false;
+                            this.queueResults = data.data || [];
                         } else {
+                            this.accountNotFound = true;
                             this.queueResults = [];
                         }
                     } catch (err) {
                         console.error('Connection error:', err);
                         this.queueResults = [];
+                        this.accountNotFound = true;
                     } finally {
                         this.loading = false;
                         this.searched = true;

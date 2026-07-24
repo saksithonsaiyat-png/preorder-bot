@@ -885,6 +885,7 @@
                         if (this.authenticated) {
                             this.fetchStats();
                             this.fetchDashboardStats();
+                            this.fetchAccounts();
                             this.fetchOrders();
                         }
                     };
@@ -896,10 +897,15 @@
                                 const log = msg.data;
                                 const userStr = log.username ? `[${log.username}] ` : '';
                                 this.addLocalLog(log.level, `${userStr}${log.message}`);
-                            } else if (msg.type === 'update' && msg.target === 'orders') {
-                                this.fetchOrders();
-                                this.fetchDashboardStats();
-                                this.fetchAuditLogs();
+                            } else if (msg.type === 'update') {
+                                if (msg.target === 'orders') {
+                                    this.fetchOrders();
+                                    this.fetchDashboardStats();
+                                    this.fetchAuditLogs();
+                                } else if (msg.target === 'accounts') {
+                                    this.fetchAccounts();
+                                    this.fetchDashboardStats();
+                                }
                             }
                         } catch (e) {}
                     };

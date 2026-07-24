@@ -108,7 +108,7 @@ function broadcastLog(username, level, message) {
         message,
         timestamp: new Date().toISOString()
     };
-    
+
     db.run(
         "INSERT INTO logs (username, level, message) VALUES (?, ?, ?)",
         [username, level, message],
@@ -232,7 +232,7 @@ app.post('/api/admin/register', (req, res) => {
     db.run(
         "INSERT INTO admins (username, password_hash) VALUES (?, ?)",
         [username, hash],
-        function(err) {
+        function (err) {
             if (err) {
                 if (err.message.includes('UNIQUE constraint failed')) {
                     return res.status(409).json({ success: false, message: 'ชื่อผู้ใช้นี้ถูกใช้งานแล้ว' });
@@ -276,7 +276,7 @@ app.post('/api/admin/update-profile', authMiddleware, (req, res) => {
     db.run(
         `UPDATE admins SET ${updates.join(', ')} WHERE id = ?`,
         params,
-        function(err) {
+        function (err) {
             if (err) {
                 if (err.message.includes('UNIQUE constraint failed')) {
                     return res.status(409).json({ success: false, message: 'ชื่อผู้ใช้นี้ถูกใช้งานแล้ว' });
@@ -286,7 +286,7 @@ app.post('/api/admin/update-profile', authMiddleware, (req, res) => {
             }
 
             const finalUsername = (newUsername && newUsername.trim()) ? newUsername.trim() : currentAdminName;
-            
+
             // Generate new token with updated username
             const newToken = jwt.sign(
                 { id: currentAdminId, username: finalUsername },
@@ -297,7 +297,7 @@ app.post('/api/admin/update-profile', authMiddleware, (req, res) => {
             const changes = [];
             if (newUsername && newUsername.trim()) changes.push(`เปลี่ยนชื่อผู้ใช้เป็น "${finalUsername}"`);
             if (newPassword && newPassword.trim()) changes.push(`เปลี่ยนรหัสผ่าน`);
-            
+
             addAuditLog(currentAdminName, `อัปเดตโปรไฟล์: ${changes.join(', ')}`);
             logger.info(`Admin "${currentAdminName}" updated profile: ${changes.join(', ')}`);
 
@@ -379,7 +379,7 @@ function resequenceAllActiveOrders(callback) {
                     if (callback) callback(null);
                     return;
                 }
-                
+
                 let completed = 0;
                 let hasError = false;
                 rows.forEach((row, index) => {
@@ -422,10 +422,10 @@ function updateQueueSequence(orderId, newPosition, isBecomingActive, isBecomingI
                     // We need to insert orderId into the list at newPosition.
                     const targetPos = parseInt(newPosition);
                     // Clamp target index
-                    const targetIndex = isNaN(targetPos) || targetPos <= 0 
+                    const targetIndex = isNaN(targetPos) || targetPos <= 0
                         ? list.length // Append to end if invalid/0
                         : Math.max(0, Math.min(targetPos - 1, list.length));
-                    
+
                     list.splice(targetIndex, 0, { id: parseInt(orderId) });
                 }
 
@@ -492,7 +492,7 @@ app.put('/api/admin/orders/:id', authMiddleware, (req, res) => {
         const oldIsActive = ['Pending', 'Processing'].includes(order.queue_status);
         const newStatus = queue_status || order.queue_status;
         const newIsActive = ['Pending', 'Processing'].includes(newStatus);
-        
+
         const isBecomingInactive = oldIsActive && !newIsActive;
         const isBecomingActive = !oldIsActive && newIsActive;
 
@@ -541,7 +541,7 @@ app.put('/api/admin/orders/:id', authMiddleware, (req, res) => {
         db.run(
             `UPDATE orders SET ${updates.join(', ')} WHERE id = ?`,
             params,
-            function(err) {
+            function (err) {
                 if (err) {
                     logger.error(`Update order error: ${err.message}`);
                     return res.status(500).json({ success: false, message: 'Database error' });
@@ -553,7 +553,7 @@ app.put('/api/admin/orders/:id', authMiddleware, (req, res) => {
                         if (seqErr) {
                             logger.error(`Queue sequencing error: ${seqErr.message}`);
                         }
-                        
+
                         // Record queue position changes in audit log
                         if (positionChanged) {
                             auditChanges.push(`ลำดับคิว: ${order.queue_position} → ${targetQueuePos}`);
@@ -585,7 +585,7 @@ app.delete('/api/admin/orders/:id', authMiddleware, (req, res) => {
             return res.status(404).json({ success: false, message: 'ไม่พบออเดอร์ดังกล่าว' });
         }
 
-        db.run("DELETE FROM orders WHERE id = ?", [orderId], function(err) {
+        db.run("DELETE FROM orders WHERE id = ?", [orderId], function (err) {
             if (err) {
                 logger.error(`Delete order error: ${err.message}`);
                 return res.status(500).json({ success: false, message: 'Database error' });
@@ -596,7 +596,7 @@ app.delete('/api/admin/orders/:id', authMiddleware, (req, res) => {
                 if (seqErr) {
                     logger.error(`Queue re-sequencing after delete error: ${seqErr.message}`);
                 }
-                
+
                 const auditMsg = `ลบออเดอร์ #${orderId} (${order.product_name}) ของ ${order.username} ออกจากระบบ`;
                 addAuditLog(adminName, auditMsg);
                 logger.info(`[Admin: ${adminName}] ${auditMsg}`);
@@ -828,7 +828,7 @@ async function executeTaskForAccount(task, account, abortSignal) {
 
             broadcastSSEStatus(taskId, username, 'Success', 'Preorder checkout succeeded');
             broadcastLog(username, 'success', `พรีออเดอร์สำเร็จ! สินค้า: Variant ${task.variant_id}, จำนวน: ${task.quantity}`);
-            
+
             sendNotificationWebhook('Success', {
                 username,
                 taskId,
@@ -838,12 +838,12 @@ async function executeTaskForAccount(task, account, abortSignal) {
 
         } catch (error) {
             logger.warn(`Checkout attempt ${attempt} failed for account ${username}: ${error.message}`);
-            
+
             if (error.response && (error.response.status === 403 || error.response.status === 429)) {
                 logger.warn(`Proxy ${proxy ? proxy.host : 'direct'} returned status code ${error.response.status}. Rotating proxy...`);
                 if (proxy) proxy.failures++;
             }
-            
+
             proxy = getNextProxy();
 
             if (attempt >= maxAttempts) {
@@ -859,7 +859,7 @@ async function executeTaskForAccount(task, account, abortSignal) {
 
                 broadcastSSEStatus(taskId, username, 'Blocked', `Failed after ${maxAttempts} attempts`);
                 broadcastLog(username, 'error', `ไม่สามารถจองพรีออเดอร์ได้หลังจากพยายามครบ ${maxAttempts} ครั้ง`);
-                
+
                 sendNotificationWebhook('Failure', {
                     username,
                     taskId,
@@ -981,7 +981,7 @@ app.post('/api/admin/tasks', (req, res) => {
     db.run(
         "INSERT INTO tasks (target_url, variant_id, quantity, execution_time, status) VALUES (?, ?, ?, ?, 'pending')",
         [target_url, variant_id, qty, execution_time],
-        function(err) {
+        function (err) {
             if (err) {
                 logger.error(`Database error inserting task: ${err.message}`);
                 return res.status(500).json({ success: false, message: 'Database insert failed' });
@@ -1059,7 +1059,7 @@ app.get('/api/check-queue', (req, res) => {
         }
 
         logger.info(`[API] Checking queue for: ${username}`);
-        
+
         db.get("SELECT * FROM accounts WHERE username = ?", [username], (err, account) => {
             if (err) {
                 logger.error(err.message);
@@ -1077,7 +1077,7 @@ app.get('/api/check-queue', (req, res) => {
                 }
 
                 broadcastLog(username, 'info', `คิวถูกร้องขอตรวจสอบสถานะปัจจุบัน: ดึงข้อมูลพรีออเดอร์ทั้งหมด ${orders.length} รายการ`);
-                
+
                 updateQueueFromTarget(username);
 
                 return res.json({
@@ -1128,14 +1128,14 @@ async function updateQueueFromTarget(username) {
                             broadcastLog(username, 'error', `ไม่สามารถเซฟข้อมูลคิวอัปเดตของสินค้า ${order.product_name} ลงฐานข้อมูลได้: ${err.message}`);
                         } else {
                             broadcastLog(username, 'success', `บอทอัปเดตคิวสินค้า ${order.product_name} สำเร็จ: สถานะย้ายไปเป็น ${nextStatus} (คิวลำดับ #${nextPos})`);
-                            
+
                             // Add system audit log
                             const logMsg = `บอทอัปเดตออเดอร์ #${order.id} (${order.product_name}): สถานะ ${order.queue_status} → ${nextStatus}, คิว #${order.queue_position} → #${nextPos}`;
                             addAuditLog('ระบบอัตโนมัติ (System)', logMsg);
-                            
+
                             // Broadcast update signal so admin panel refreshes immediately
                             broadcastUpdate('orders');
-                            
+
                             // Re-sequence remaining active orders if state changed
                             if (nextStatus !== order.queue_status || nextPos !== order.queue_position) {
                                 resequenceAllActiveOrders((seqErr) => {
