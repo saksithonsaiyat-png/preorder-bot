@@ -1031,12 +1031,49 @@ app.post('/api/target-mock/login', (req, res) => {
     });
 });
 
+// Universal App Logo & Details Resolver for any preordered app/service
+function resolveAppProductDetails(productName, targetImage) {
+    const nameUpper = (productName || '').toUpperCase();
+    
+    // Official High-Res Icons for Streaming & Preorder Services
+    const appLogos = {
+        'MONOMAX': 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=300&q=80',
+        'NETFLIX': 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?auto=format&fit=crop&w=300&q=80',
+        'YOUTUBE': 'https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?auto=format&fit=crop&w=300&q=80',
+        'DISNEY': 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=300&q=80',
+        'SPOTIFY': 'https://images.unsplash.com/photo-1614680376593-902f749f7cfc?auto=format&fit=crop&w=300&q=80',
+        'VIU': 'https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?auto=format&fit=crop&w=300&q=80',
+        'IQIYI': 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?auto=format&fit=crop&w=300&q=80',
+        'PRIME': 'https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?auto=format&fit=crop&w=300&q=80',
+        'WETV': 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=300&q=80'
+    };
+
+    let resolvedImage = targetImage;
+    if (!resolvedImage || resolvedImage.includes('placeholder') || resolvedImage.includes('photo-1526170375885')) {
+        for (const [key, logoUrl] of Object.entries(appLogos)) {
+            if (nameUpper.includes(key)) {
+                resolvedImage = logoUrl;
+                break;
+            }
+        }
+    }
+
+    if (!resolvedImage) {
+        resolvedImage = 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=300&q=80';
+    }
+
+    return {
+        product_name: productName || 'สินค้าพรีออเดอร์',
+        product_image: resolvedImage
+    };
+}
+
 app.get('/api/target-mock/orders', (req, res) => {
     const username = req.query.username || 'TEST4455';
     const initialQueue = 3;
     const waitTarget = new Date(Date.now() + 6 * 60 * 1000).toISOString();
 
-    logger.info(`[Target Mock] Returning MONOMAX preorder items for target user: ${username}`);
+    logger.info(`[Target Mock] Returning preorder items for target user: ${username}`);
     return res.json({
         success: true,
         data: [
@@ -1100,7 +1137,7 @@ async function fetchTargetOrders(account, sessionToken) {
     const proxy = getNextProxy();
     const username = account.username;
 
-    broadcastLog(username, 'info', `[Scraper] กำลังเชื่อมต่อ API เพื่อดึงข้อมูลสินค้าพรีออเดอร์ MONOMAX ของ ${username}...`);
+    broadcastLog(username, 'info', `[Scraper] กำลังเชื่อมต่อ API เพื่อดึงข้อมูลสินค้าพรีออเดอร์ของ ${username}...`);
 
     try {
         const axiosConfig = createProxyAxiosConfig(proxy, {
@@ -1128,9 +1165,11 @@ async function fetchTargetOrders(account, sessionToken) {
             const now = new Date().toISOString();
 
             remoteOrders.forEach(remoteOrder => {
+                const resolved = resolveAppProductDetails(remoteOrder.product_name, remoteOrder.product_image);
+
                 db.get(
                     "SELECT id FROM orders WHERE username = ? AND product_name = ?",
-                    [username, remoteOrder.product_name],
+                    [username, resolved.product_name],
                     (err, existingOrder) => {
                         if (existingOrder) {
                             db.run(
@@ -1145,7 +1184,7 @@ async function fetchTargetOrders(account, sessionToken) {
                                     last_updated = ? 
                                  WHERE id = ?`,
                                 [
-                                    remoteOrder.product_image || 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=300&q=80',
+                                    resolved.product_image,
                                     remoteOrder.queue_position || 3,
                                     remoteOrder.queue_status || 'Processing',
                                     remoteOrder.estimated_wait_time || 'ประมาณ 6 นาที',
@@ -1162,8 +1201,8 @@ async function fetchTargetOrders(account, sessionToken) {
                                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                                 [
                                     username,
-                                    remoteOrder.product_name,
-                                    remoteOrder.product_image || 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=300&q=80',
+                                    resolved.product_name,
+                                    resolved.product_image,
                                     remoteOrder.queue_position || 3,
                                     remoteOrder.queue_status || 'Processing',
                                     remoteOrder.estimated_wait_time || 'ประมาณ 6 นาที',
@@ -1179,7 +1218,7 @@ async function fetchTargetOrders(account, sessionToken) {
                 );
             });
 
-            broadcastLog(username, 'success', `[Scraper] ซิงค์ข้อมูลพรีออเดอร์ MONOMAX ${remoteOrders.length} รายการจากเว็บต้นทางสำเร็จ!`);
+            broadcastLog(username, 'success', `[Scraper] ซิงค์ข้อมูลพรีออเดอร์ ${remoteOrders.length} รายการจากเว็บต้นทางสำเร็จ!`);
             broadcastUpdate('orders');
             return { success: true, count: remoteOrders.length };
         } else {
