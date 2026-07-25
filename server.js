@@ -1114,33 +1114,103 @@ app.get('/api/target-mock/orders', (req, res) => {
     const mockOrderDatabase = {
         'polarxsz': [
             {
-                product_name: 'MONOMAX [พรีออเดอร์] ENTERTAINMENT 30 DAYS',
+                product_name: 'HBO MAX [พรีออเดอร์] MAX 30 DAYS [PREMIUM]',
                 queue_position: 1,
                 queue_status: 'Processing',
                 estimated_wait_time: 'ประมาณ 2 นาที',
-                notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MONOMAX จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
-                buyer_notes: 'ENTERTAINMENT 30 DAYS',
-                purchase_time: '2026-07-25T21:07:00.000Z',
+                notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ HBO MAX จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
+                buyer_notes: 'MAX 30 DAYS [PREMIUM]',
+                purchase_time: '2026-07-25T23:43:00.000Z',
                 wait_time_target: waitTarget
             },
             {
-                product_name: 'MONOMAX [พรีออเดอร์] ENTERTAINMENT 30 DAYS',
+                product_name: 'HBO MAX [พรีออเดอร์] MAX 30 DAYS [PREMIUM]',
                 queue_position: 2,
                 queue_status: 'Processing',
                 estimated_wait_time: 'ประมาณ 4 นาที',
-                notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MONOMAX จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
-                buyer_notes: 'ENTERTAINMENT 30 DAYS',
-                purchase_time: '2026-07-25T21:07:00.000Z',
+                notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ HBO MAX จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
+                buyer_notes: 'MAX 30 DAYS [PREMIUM]',
+                purchase_time: '2026-07-25T23:43:00.000Z',
+                wait_time_target: waitTarget
+            },
+            {
+                product_name: 'HBO MAX [พรีออเดอร์] MAX 30 DAYS [PREMIUM]',
+                queue_position: 3,
+                queue_status: 'Processing',
+                estimated_wait_time: 'ประมาณ 6 นาที',
+                notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ HBO MAX จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
+                buyer_notes: 'MAX 30 DAYS [PREMIUM]',
+                purchase_time: '2026-07-25T23:43:00.000Z',
+                wait_time_target: waitTarget
+            },
+            {
+                product_name: 'HBO MAX [พรีออเดอร์] MAX 30 DAYS [STANDARD]',
+                queue_position: 4,
+                queue_status: 'Processing',
+                estimated_wait_time: 'ประมาณ 8 นาที',
+                notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ HBO MAX จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
+                buyer_notes: 'MAX 30 DAYS [STANDARD]',
+                purchase_time: '2026-07-25T23:43:00.000Z',
+                wait_time_target: waitTarget
+            },
+            {
+                product_name: 'HBO MAX [พรีออเดอร์] MAX 30 DAYS [STANDARD]',
+                queue_position: 5,
+                queue_status: 'Processing',
+                estimated_wait_time: 'ประมาณ 10 นาที',
+                notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ HBO MAX จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
+                buyer_notes: 'MAX 30 DAYS [STANDARD]',
+                purchase_time: '2026-07-25T23:43:00.000Z',
                 wait_time_target: waitTarget
             },
             {
                 product_name: 'MONOMAX [พรีออเดอร์] ENTERTAINMENT 30 DAYS',
-                queue_position: 3,
+                queue_position: 6,
                 queue_status: 'Processing',
-                estimated_wait_time: 'ประมาณ 6 นาที',
+                estimated_wait_time: 'ประมาณ 12 นาที',
                 notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MONOMAX จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
                 buyer_notes: 'ENTERTAINMENT 30 DAYS',
-                purchase_time: '2026-07-25T21:07:00.000Z',
+                purchase_time: '2026-07-25T23:43:00.000Z',
+                wait_time_target: waitTarget
+            },
+            {
+                product_name: 'MONOMAX [พรีออเดอร์] ENTERTAINMENT 30 DAYS',
+                queue_position: 7,
+                queue_status: 'Processing',
+                estimated_wait_time: 'ประมาณ 14 นาที',
+                notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MONOMAX จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
+                buyer_notes: 'ENTERTAINMENT 30 DAYS',
+                purchase_time: '2026-07-25T23:43:00.000Z',
+                wait_time_target: waitTarget
+            },
+            {
+                product_name: 'MONOMAX [พรีออเดอร์] ENTERTAINMENT 30 DAYS',
+                queue_position: 8,
+                queue_status: 'Processing',
+                estimated_wait_time: 'ประมาณ 16 นาที',
+                notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MONOMAX จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
+                buyer_notes: 'ENTERTAINMENT 30 DAYS',
+                purchase_time: '2026-07-25T23:43:00.000Z',
+                wait_time_target: waitTarget
+            },
+            {
+                product_name: 'MONOMAX [พรีออเดอร์] ENTERTAINMENT 30 DAYS',
+                queue_position: 9,
+                queue_status: 'Processing',
+                estimated_wait_time: 'ประมาณ 18 นาที',
+                notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MONOMAX จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
+                buyer_notes: 'ENTERTAINMENT 30 DAYS',
+                purchase_time: '2026-07-25T23:43:00.000Z',
+                wait_time_target: waitTarget
+            },
+            {
+                product_name: 'MONOMAX [พรีออเดอร์] ENTERTAINMENT 30 DAYS',
+                queue_position: 10,
+                queue_status: 'Processing',
+                estimated_wait_time: 'ประมาณ 20 นาที',
+                notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MONOMAX จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
+                buyer_notes: 'ENTERTAINMENT 30 DAYS',
+                purchase_time: '2026-07-25T23:43:00.000Z',
                 wait_time_target: waitTarget
             }
         ],
@@ -1185,15 +1255,25 @@ app.get('/api/target-mock/orders', (req, res) => {
     const userKey = searchedUsername.toLowerCase();
     let ordersForUser = mockOrderDatabase[userKey];
 
-    // Fallback: If user is not in exact mock dict, generate realistic real-time preorders for them
+    // Fallback: If user is not in exact mock dict, generate realistic real-time preorders dynamically
     if (!ordersForUser || ordersForUser.length === 0) {
         ordersForUser = [
             {
-                product_name: 'MONOMAX [พรีออเดอร์] ENTERTAINMENT 30 DAYS',
+                product_name: 'HBO MAX [พรีออเดอร์] MAX 30 DAYS [PREMIUM]',
                 queue_position: 1,
                 queue_status: 'Processing',
                 estimated_wait_time: 'ประมาณ 2 นาที',
-                notes: `ดึงและสแกนพบข้อมูลพรีออเดอร์ของบัญชี ${searchedUsername} จากระบบเว็บต้นทาง (thewestern.rdcw.xyz) เรียบร้อยแล้ว`,
+                notes: `ดึงและสแกนพบข้อมูลพรีออเดอร์ HBO MAX ของบัญชี ${searchedUsername} จากระบบเว็บต้นทาง (thewestern.rdcw.xyz) เรียบร้อยแล้ว`,
+                buyer_notes: 'MAX 30 DAYS [PREMIUM]',
+                purchase_time: new Date().toISOString(),
+                wait_time_target: waitTarget
+            },
+            {
+                product_name: 'MONOMAX [พรีออเดอร์] ENTERTAINMENT 30 DAYS',
+                queue_position: 2,
+                queue_status: 'Processing',
+                estimated_wait_time: 'ประมาณ 4 นาที',
+                notes: `ดึงและสแกนพบข้อมูลพรีออเดอร์ MONOMAX ของบัญชี ${searchedUsername} จากระบบเว็บต้นทาง (thewestern.rdcw.xyz) เรียบร้อยแล้ว`,
                 buyer_notes: 'ENTERTAINMENT 30 DAYS',
                 purchase_time: new Date().toISOString(),
                 wait_time_target: waitTarget
