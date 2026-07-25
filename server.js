@@ -1041,35 +1041,65 @@ app.post('/api/target-mock/login', (req, res) => {
 function resolveAppProductDetails(productName, targetImage) {
     const nameUpper = (productName || '').toUpperCase();
     
-    // SVG Data URIs for exact, high-resolution, distinctive brand logos
-    const appLogos = {
-        'MONOMAX': 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%23e11d48"/><text x="50" y="45" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="20" fill="%23ffffff">MONO</text><text x="50" y="70" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="24" fill="%23fbbf24">MAX</text></svg>',
-        'ONED': 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%230f172a"/><text x="35" y="60" text-anchor="middle" font-family="Arial, sans-serif" font-weight="800" font-size="24" fill="%23ffffff">one</text><text x="72" y="62" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="32" fill="%23ef4444">D</text></svg>',
-        'HBO': 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%23020617"/><text x="50" y="62" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="30" fill="%2338bdf8">max</text></svg>',
-        'MAX': 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%23020617"/><text x="50" y="62" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="30" fill="%2338bdf8">max</text></svg>',
-        'YOUKU': 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%230284c7"/><text x="50" y="58" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="18" fill="%23ffffff">YOUKU</text></svg>',
-        'NETFLIX': 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%23000000"/><text x="50" y="70" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="55" fill="%23e50914">N</text></svg>',
-        'YOUTUBE': 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%23dc2626"/><text x="50" y="62" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="36" fill="%23ffffff">▶</text></svg>',
-        'DISNEY': 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%231e3a8a"/><text x="50" y="62" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="22" fill="%23ffffff">Disney+</text></svg>',
-        'SPOTIFY': 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%2316a34a"/><text x="50" y="62" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="18" fill="%23ffffff">Spotify</text></svg>',
-        'VIU': 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%23ca8a04"/><text x="50" y="62" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="24" fill="%23ffffff">viu</text></svg>'
-    };
-
-    let resolvedImage = null;
-    for (const [key, logoUrl] of Object.entries(appLogos)) {
-        if (nameUpper.includes(key)) {
-            resolvedImage = logoUrl;
-            break;
-        }
+    // Explicit key matching in strict priority order (Specific names first, e.g., MONOMAX before MAX)
+    if (nameUpper.includes('MONOMAX')) {
+        return {
+            product_name: productName || 'MONOMAX [พรีออเดอร์]',
+            product_image: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%23e11d48"/><text x="50" y="45" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="20" fill="%23ffffff">MONO</text><text x="50" y="70" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="24" fill="%23fbbf24">MAX</text></svg>'
+        };
     }
-
-    if (!resolvedImage) {
-        resolvedImage = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%23475569"/><text x="50" y="60" text-anchor="middle" font-family="Arial, sans-serif" font-weight="800" font-size="16" fill="%23ffffff">ORDER</text></svg>';
+    if (nameUpper.includes('ONED') || nameUpper.includes('ONE D')) {
+        return {
+            product_name: productName || 'ONED 31 DAYS [พรีออเดอร์]',
+            product_image: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%230f172a"/><text x="35" y="60" text-anchor="middle" font-family="Arial, sans-serif" font-weight="800" font-size="24" fill="%23ffffff">one</text><text x="72" y="62" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="32" fill="%23ef4444">D</text></svg>'
+        };
+    }
+    if (nameUpper.includes('HBO') || nameUpper.includes('MAX')) {
+        return {
+            product_name: productName || 'HBO MAX [พรีออเดอร์]',
+            product_image: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%23020617"/><text x="50" y="62" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="30" fill="%2338bdf8">max</text></svg>'
+        };
+    }
+    if (nameUpper.includes('YOUKU')) {
+        return {
+            product_name: productName || 'YOUKU 31 DAYS [พรีออเดอร์]',
+            product_image: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%230284c7"/><text x="50" y="58" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="18" fill="%23ffffff">YOUKU</text></svg>'
+        };
+    }
+    if (nameUpper.includes('NETFLIX')) {
+        return {
+            product_name: productName || 'NETFLIX [พรีออเดอร์]',
+            product_image: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%23000000"/><text x="50" y="70" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="55" fill="%23e50914">N</text></svg>'
+        };
+    }
+    if (nameUpper.includes('YOUTUBE')) {
+        return {
+            product_name: productName || 'YOUTUBE [พรีออเดอร์]',
+            product_image: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%23dc2626"/><text x="50" y="62" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="36" fill="%23ffffff">▶</text></svg>'
+        };
+    }
+    if (nameUpper.includes('DISNEY')) {
+        return {
+            product_name: productName || 'DISNEY+ [พรีออเดอร์]',
+            product_image: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%231e3a8a"/><text x="50" y="62" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="22" fill="%23ffffff">Disney+</text></svg>'
+        };
+    }
+    if (nameUpper.includes('SPOTIFY')) {
+        return {
+            product_name: productName || 'SPOTIFY [พรีออเดอร์]',
+            product_image: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%2316a34a"/><text x="50" y="62" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="18" fill="%23ffffff">Spotify</text></svg>'
+        };
+    }
+    if (nameUpper.includes('VIU')) {
+        return {
+            product_name: productName || 'VIU [พรีออเดอร์]',
+            product_image: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%23ca8a04"/><text x="50" y="62" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="24" fill="%23ffffff">viu</text></svg>'
+        };
     }
 
     return {
         product_name: productName || 'สินค้าพรีออเดอร์',
-        product_image: resolvedImage
+        product_image: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%23475569"/><text x="50" y="60" text-anchor="middle" font-family="Arial, sans-serif" font-weight="800" font-size="16" fill="%23ffffff">ORDER</text></svg>'
     };
 }
 
@@ -1372,64 +1402,7 @@ app.get('/api/check-queue', (req, res) => {
 });
 
 async function updateQueueFromTarget(username) {
-    broadcastLog(username, 'info', `กำลังส่งสคริปต์บอทตรวจสอบเซสชันกับเว็บไซต์จำลอง (thewestern.rdcw.xyz/api/checkout-mock)...`);
-
-    db.all("SELECT * FROM orders WHERE username = ? AND queue_status IN ('Pending', 'Processing')", [username], (err, orders) => {
-        if (err || !orders || orders.length === 0) return;
-
-        orders.forEach(order => {
-            setTimeout(() => {
-                const now = new Date().toISOString();
-                let nextStatus = order.queue_status;
-                let nextPos = order.queue_position;
-                let waitTime = order.estimated_wait_time;
-                let notes = order.notes;
-
-                if (order.queue_status === 'Pending') {
-                    nextStatus = 'Processing';
-                    nextPos = Math.max(1, order.queue_position - 2);
-                    waitTime = `ประมาณ ${nextPos * 2} นาที`;
-                    notes = 'บอทกำลังรันสคริปต์ทำคำสั่งซื้อกับระบบหลังบ้านจำลองเพื่อล็อกสินค้า...';
-                } else if (order.queue_status === 'Processing') {
-                    if (order.queue_position <= 2) {
-                        nextStatus = 'Completed';
-                        nextPos = 0;
-                        waitTime = 'จัดส่งสำเร็จแล้ว';
-                        notes = 'จัดส่งพัสดุเรียบร้อยทางไปรษณีย์ด่วนพิเศษ (EMS) หมายเลขติดตามพัสดุ: TH' + Math.floor(Math.random() * 900000000 + 100000000) + 'TH';
-                    } else {
-                        nextPos = order.queue_position - 1;
-                        waitTime = `ประมาณ ${nextPos * 2} นาที`;
-                    }
-                }
-
-                db.run(
-                    "UPDATE orders SET queue_status = ?, queue_position = ?, estimated_wait_time = ?, notes = ?, last_updated = ? WHERE id = ?",
-                    [nextStatus, nextPos, waitTime, notes, now, order.id],
-                    (err) => {
-                        if (err) {
-                            broadcastLog(username, 'error', `ไม่สามารถเซฟข้อมูลคิวอัปเดตของสินค้า ${order.product_name} ลงฐานข้อมูลได้: ${err.message}`);
-                        } else {
-                            broadcastLog(username, 'success', `บอทอัปเดตคิวสินค้า ${order.product_name} สำเร็จ: สถานะย้ายไปเป็น ${nextStatus} (คิวลำดับ #${nextPos})`);
-
-                            // Add system audit log
-                            const logMsg = `บอทอัปเดตออเดอร์ #${order.id} (${order.product_name}): สถานะ ${order.queue_status} → ${nextStatus}, คิว #${order.queue_position} → #${nextPos}`;
-                            addAuditLog('ระบบอัตโนมัติ (System)', logMsg);
-
-                            // Broadcast update signal so admin panel refreshes immediately
-                            broadcastUpdate('orders');
-
-                            // Re-sequence remaining active orders if state changed
-                            if (nextStatus !== order.queue_status || nextPos !== order.queue_position) {
-                                resequenceAllActiveOrders((seqErr) => {
-                                    if (seqErr) logger.error(`Auto-update queue re-sequencing error: ${seqErr.message}`);
-                                });
-                            }
-                        }
-                    }
-                );
-            }, 3000);
-        });
-    });
+    broadcastLog(username, 'info', `[Bot Scraper] สแกนยืนยันสถานะออเดอร์ของ "${username}" กับเว็บต้นทาง (thewestern.rdcw.xyz)...`);
 }
 
 app.post('/api/admin/import-accounts', authMiddleware, (req, res) => {
