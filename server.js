@@ -12,10 +12,16 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 require('winston-daily-rotate-file');
 
-// Puppeteer Stealth Scraper Setup
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-puppeteer.use(StealthPlugin());
+// Puppeteer Stealth Scraper Setup (Safe Dynamic Load for Cloud Environments)
+let puppeteer = null;
+try {
+    const puppeteerExtra = require('puppeteer-extra');
+    const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+    puppeteerExtra.use(StealthPlugin());
+    puppeteer = puppeteerExtra;
+} catch (e) {
+    console.warn('[Puppeteer Load]: Puppeteer module disabled or missing dependencies in host environment. Falling back to Fast HTTP Scraper Engine.');
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -1345,6 +1351,9 @@ async function getSystemBotToken() {
 
 // Advanced Puppeteer Headless Live Scraper Engine (100% Real Live Scraping)
 async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
+    if (!puppeteer) {
+        return null;
+    }
     const { username, password } = SYSTEM_BOT_CREDENTIALS;
     broadcastLog(searchedUsername, 'info', `[Puppeteer Live] บอทเริ่มเปิดเบราว์เซอร์ Headless เพื่อสแกนหาคำสั่งซื้อของ "${searchedUsername}" สดๆ บนเว็บต้นทาง (${TARGET_BASE_URL})...`);
 
@@ -1357,7 +1366,9 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
                 '--disable-accelerated-2d-canvas',
-                '--disable-gpu'
+                '--disable-gpu',
+                '--single-process',
+                '--no-zygote'
             ]
         });
 
