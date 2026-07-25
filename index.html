@@ -393,12 +393,12 @@
                         this.checkServiceStatus();
                     }, 10000);
 
-                    // Silent auto-refresh queue results every 5 seconds if searched
+                    // Silent auto-refresh queue results every 1 minute (60 seconds) if searched
                     setInterval(() => {
                         if (this.searched && this.username.trim() && !this.loading) {
                             this.refreshQueueSilently();
                         }
-                    }, 5000);
+                    }, 60000);
                 },
 
                 async checkServiceStatus() {

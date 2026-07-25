@@ -1154,26 +1154,6 @@ app.get('/api/target-mock/orders', (req, res) => {
                 buyer_notes: 'ENTERTAINMENT 30 DAYS',
                 purchase_time: '2026-07-25T20:19:00.000Z',
                 wait_time_target: waitTarget
-            },
-            {
-                product_name: 'MONOMAX [พรีออเดอร์] ENTERTAINMENT 30 DAYS',
-                queue_position: 2,
-                queue_status: 'Processing',
-                estimated_wait_time: 'ประมาณ 4 นาที',
-                notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MONOMAX จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
-                buyer_notes: 'ENTERTAINMENT 30 DAYS',
-                purchase_time: '2026-07-25T20:19:00.000Z',
-                wait_time_target: waitTarget
-            },
-            {
-                product_name: 'MONOMAX [พรีออเดอร์] ENTERTAINMENT 30 DAYS',
-                queue_position: 3,
-                queue_status: 'Processing',
-                estimated_wait_time: 'ประมาณ 6 นาที',
-                notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MONOMAX จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
-                buyer_notes: 'ENTERTAINMENT 30 DAYS',
-                purchase_time: '2026-07-25T20:19:00.000Z',
-                wait_time_target: waitTarget
             }
         ],
         'ln212224': [
