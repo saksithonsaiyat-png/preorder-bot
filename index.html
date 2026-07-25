@@ -101,7 +101,7 @@
                 ตรวจสอบคิวจองสินค้าพรีออเดอร์
             </h1>
             <p class="max-w-md mx-auto text-sm sm:text-base font-light transition-colors duration-300" :class="darkMode ? 'text-zinc-400' : 'text-slate-600'">
-                กรอกชื่อบัญชีของคุณเพื่อตรวจสอบความคืบหน้าของสินค้าทุกรายการแบบเรียลไทม์
+                กรอกชื่อบัญชีที่ลงทะเบียนไว้กับเว็บต้นทาง (thewestern.rdcw.xyz) เพื่อให้บอทเข้าไปสแกนดึงออเดอร์มาแสดงผล
             </p>
         </div>
 
@@ -124,7 +124,7 @@
             <form @submit.prevent="checkQueue()" class="space-y-5">
                 <div>
                     <label for="username-input" class="block text-xs font-bold uppercase tracking-wider mb-2.5" :class="darkMode ? 'text-zinc-400' : 'text-slate-505'">
-                        ชื่อผู้ใช้งาน (Username / Email ของบัญชี)
+                        ชื่อผู้ใช้งาน (Username ที่ลงทะเบียนในเว็บต้นทาง)
                     </label>
                     <div class="relative rounded-lg shadow-sm">
                         <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
@@ -133,7 +133,7 @@
                             </svg>
                         </div>
                         <input type="text" id="username-input" x-model="username"
-                            placeholder="ตัวอย่าง: TEST4455"
+                            placeholder="ตัวอย่าง: Polarxsz หรือ TEST4455"
                             class="block w-full pl-11 pr-4 py-3.5 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all text-base border duration-200"
                             :class="darkMode ? 'bg-black/60 border-zinc-800 text-white placeholder-zinc-600 focus:bg-black/90' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white'"
                             required>
@@ -142,7 +142,7 @@
 
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
                     <div class="flex items-center space-x-2 text-[11px] font-medium" :class="darkMode ? 'text-zinc-500' : 'text-slate-505'">
-                        <span>ระบุชื่อบัญชีที่ได้รับการลงทะเบียนเรียบร้อยแล้ว</span>
+                        <span>ระบุชื่อบัญชีของคุณในเว็บต้นทาง (thewestern.rdcw.xyz)</span>
                     </div>
 
                     <button type="submit"
