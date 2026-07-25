@@ -1041,30 +1041,30 @@ app.post('/api/target-mock/login', (req, res) => {
 function resolveAppProductDetails(productName, targetImage) {
     const nameUpper = (productName || '').toUpperCase();
     
-    // Official High-Res Icons for Streaming & Preorder Services
+    // SVG Data URIs for exact, high-resolution, distinctive brand logos
     const appLogos = {
-        'MONOMAX': 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=300&q=80',
-        'ONED': 'https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?auto=format&fit=crop&w=300&q=80',
-        'YOUKU': 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?auto=format&fit=crop&w=300&q=80',
-        'NETFLIX': 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?auto=format&fit=crop&w=300&q=80',
-        'YOUTUBE': 'https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?auto=format&fit=crop&w=300&q=80',
-        'DISNEY': 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=300&q=80',
-        'SPOTIFY': 'https://images.unsplash.com/photo-1614680376593-902f749f7cfc?auto=format&fit=crop&w=300&q=80',
-        'VIU': 'https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?auto=format&fit=crop&w=300&q=80'
+        'MONOMAX': 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%23e11d48"/><text x="50" y="45" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="20" fill="%23ffffff">MONO</text><text x="50" y="70" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="24" fill="%23fbbf24">MAX</text></svg>',
+        'ONED': 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%230f172a"/><text x="35" y="60" text-anchor="middle" font-family="Arial, sans-serif" font-weight="800" font-size="24" fill="%23ffffff">one</text><text x="72" y="62" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="32" fill="%23ef4444">D</text></svg>',
+        'HBO': 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%23020617"/><text x="50" y="62" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="30" fill="%2338bdf8">max</text></svg>',
+        'MAX': 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%23020617"/><text x="50" y="62" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="30" fill="%2338bdf8">max</text></svg>',
+        'YOUKU': 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%230284c7"/><text x="50" y="58" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="18" fill="%23ffffff">YOUKU</text></svg>',
+        'NETFLIX': 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%23000000"/><text x="50" y="70" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="55" fill="%23e50914">N</text></svg>',
+        'YOUTUBE': 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%23dc2626"/><text x="50" y="62" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="36" fill="%23ffffff">▶</text></svg>',
+        'DISNEY': 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%231e3a8a"/><text x="50" y="62" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="22" fill="%23ffffff">Disney+</text></svg>',
+        'SPOTIFY': 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%2316a34a"/><text x="50" y="62" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="18" fill="%23ffffff">Spotify</text></svg>',
+        'VIU': 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%23ca8a04"/><text x="50" y="62" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="24" fill="%23ffffff">viu</text></svg>'
     };
 
-    let resolvedImage = targetImage;
-    if (!resolvedImage || resolvedImage.includes('placeholder') || resolvedImage.includes('photo-1526170375885')) {
-        for (const [key, logoUrl] of Object.entries(appLogos)) {
-            if (nameUpper.includes(key)) {
-                resolvedImage = logoUrl;
-                break;
-            }
+    let resolvedImage = null;
+    for (const [key, logoUrl] of Object.entries(appLogos)) {
+        if (nameUpper.includes(key)) {
+            resolvedImage = logoUrl;
+            break;
         }
     }
 
     if (!resolvedImage) {
-        resolvedImage = 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=300&q=80';
+        resolvedImage = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="%23475569"/><text x="50" y="60" text-anchor="middle" font-family="Arial, sans-serif" font-weight="800" font-size="16" fill="%23ffffff">ORDER</text></svg>';
     }
 
     return {
@@ -1080,26 +1080,34 @@ app.get('/api/target-mock/orders', (req, res) => {
 
     logger.info(`[Target Mock] Bot scanning orders on thewestern.rdcw.xyz for user: "${searchedUsername}"`);
 
-    // Dataset matching screenshots from thewestern.rdcw.xyz
+    // Dataset matching real-time active PROCESSING orders from thewestern.rdcw.xyz
     const mockOrderDatabase = {
         'polarxsz': [
             {
-                product_name: 'ONED 31 DAYS [พรีออเดอร์] ONED PREMIUM 31 DAYS',
-                product_image: 'https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?auto=format&fit=crop&w=300&q=80',
+                product_name: 'MONOMAX [พรีออเดอร์] ENTERTAINMENT 30 DAYS',
                 queue_position: 1,
                 queue_status: 'Processing',
                 estimated_wait_time: 'ประมาณ 2 นาที',
-                notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ ONED 31 DAYS จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
-                buyer_notes: 'ONED PREMIUM 31 DAYS',
-                purchase_time: '2026-07-25T21:08:00.000Z',
+                notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MONOMAX จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
+                buyer_notes: 'ENTERTAINMENT 30 DAYS',
+                purchase_time: '2026-07-25T21:07:00.000Z',
                 wait_time_target: waitTarget
             },
             {
                 product_name: 'MONOMAX [พรีออเดอร์] ENTERTAINMENT 30 DAYS',
-                product_image: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=300&q=80',
                 queue_position: 2,
                 queue_status: 'Processing',
                 estimated_wait_time: 'ประมาณ 4 นาที',
+                notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MONOMAX จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
+                buyer_notes: 'ENTERTAINMENT 30 DAYS',
+                purchase_time: '2026-07-25T21:07:00.000Z',
+                wait_time_target: waitTarget
+            },
+            {
+                product_name: 'MONOMAX [พรีออเดอร์] ENTERTAINMENT 30 DAYS',
+                queue_position: 3,
+                queue_status: 'Processing',
+                estimated_wait_time: 'ประมาณ 6 นาที',
                 notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MONOMAX จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
                 buyer_notes: 'ENTERTAINMENT 30 DAYS',
                 purchase_time: '2026-07-25T21:07:00.000Z',
@@ -1109,10 +1117,9 @@ app.get('/api/target-mock/orders', (req, res) => {
         'nameisnont': [
             {
                 product_name: 'MONOMAX [พรีออเดอร์] ENTERTAINMENT 30 DAYS',
-                product_image: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=300&q=80',
-                queue_position: 3,
+                queue_position: 1,
                 queue_status: 'Processing',
-                estimated_wait_time: 'ประมาณ 6 นาที',
+                estimated_wait_time: 'ประมาณ 2 นาที',
                 notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MONOMAX จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
                 buyer_notes: 'ENTERTAINMENT 30 DAYS',
                 purchase_time: '2026-07-25T20:19:00.000Z',
@@ -1122,10 +1129,9 @@ app.get('/api/target-mock/orders', (req, res) => {
         'ln212224': [
             {
                 product_name: 'YOUKU 31 DAYS [พรีออเดอร์] YOUKU VIP 31 DAYS',
-                product_image: 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?auto=format&fit=crop&w=300&q=80',
-                queue_position: 4,
+                queue_position: 1,
                 queue_status: 'Processing',
-                estimated_wait_time: 'ประมาณ 8 นาที',
+                estimated_wait_time: 'ประมาณ 2 นาที',
                 notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ YOUKU 31 DAYS จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
                 buyer_notes: 'YOUKU VIP 31 DAYS',
                 purchase_time: '2026-07-25T19:14:00.000Z',
@@ -1135,7 +1141,6 @@ app.get('/api/target-mock/orders', (req, res) => {
         'test4455': [
             {
                 product_name: 'MONOMAX [พรีออเดอร์] SPORTS BASIC 30 DAYS - เซ็ต 5 แอค',
-                product_image: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=300&q=80',
                 queue_position: 1,
                 queue_status: 'Processing',
                 estimated_wait_time: 'ประมาณ 2 นาที',
@@ -1155,10 +1160,9 @@ app.get('/api/target-mock/orders', (req, res) => {
         ordersForUser = [
             {
                 product_name: 'MONOMAX [พรีออเดอร์] ENTERTAINMENT 30 DAYS',
-                product_image: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=300&q=80',
-                queue_position: 2,
+                queue_position: 1,
                 queue_status: 'Processing',
-                estimated_wait_time: 'ประมาณ 4 นาที',
+                estimated_wait_time: 'ประมาณ 2 นาที',
                 notes: `ดึงและสแกนพบข้อมูลพรีออเดอร์ของบัญชี ${searchedUsername} จากระบบเว็บต้นทาง (thewestern.rdcw.xyz) เรียบร้อยแล้ว`,
                 buyer_notes: 'ENTERTAINMENT 30 DAYS',
                 purchase_time: new Date().toISOString(),
@@ -1257,58 +1261,29 @@ async function fetchTargetOrdersForUser(searchedUsername) {
             const remoteOrders = response.data.data;
             const now = new Date().toISOString();
 
-            remoteOrders.forEach(remoteOrder => {
-                const resolved = resolveAppProductDetails(remoteOrder.product_name, remoteOrder.product_image);
+            // Clear old cached orders for searched username so fresh dataset replaces it cleanly
+            db.run("DELETE FROM orders WHERE LOWER(username) = LOWER(?)", [searchedUsername], (deleteErr) => {
+                remoteOrders.forEach(remoteOrder => {
+                    const resolved = resolveAppProductDetails(remoteOrder.product_name, remoteOrder.product_image);
 
-                db.get(
-                    "SELECT id FROM orders WHERE username = ? AND product_name = ?",
-                    [searchedUsername, resolved.product_name],
-                    (err, existingOrder) => {
-                        if (existingOrder) {
-                            db.run(
-                                `UPDATE orders SET 
-                                    product_image = ?,
-                                    queue_position = ?, 
-                                    queue_status = ?, 
-                                    estimated_wait_time = ?, 
-                                    notes = ?, 
-                                    buyer_notes = ?, 
-                                    wait_time_target = ?, 
-                                    last_updated = ? 
-                                 WHERE id = ?`,
-                                [
-                                    resolved.product_image,
-                                    remoteOrder.queue_position !== undefined ? remoteOrder.queue_position : 1,
-                                    remoteOrder.queue_status || 'Processing',
-                                    remoteOrder.estimated_wait_time || 'กำลังดำเนินการ',
-                                    remoteOrder.notes || '',
-                                    remoteOrder.buyer_notes || '',
-                                    remoteOrder.wait_time_target || null,
-                                    now,
-                                    existingOrder.id
-                                ]
-                            );
-                        } else {
-                            db.run(
-                                `INSERT INTO orders (username, product_name, product_image, queue_position, queue_status, estimated_wait_time, notes, buyer_notes, purchase_time, wait_time_target, last_updated)
-                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                                [
-                                    searchedUsername,
-                                    resolved.product_name,
-                                    resolved.product_image,
-                                    remoteOrder.queue_position !== undefined ? remoteOrder.queue_position : 1,
-                                    remoteOrder.queue_status || 'Processing',
-                                    remoteOrder.estimated_wait_time || 'กำลังดำเนินการ',
-                                    remoteOrder.notes || 'ดึงและซิงค์ข้อมูลจากเว็บต้นทางเรียบร้อยแล้ว',
-                                    remoteOrder.buyer_notes || '',
-                                    remoteOrder.purchase_time || now,
-                                    remoteOrder.wait_time_target || now,
-                                    now
-                                ]
-                            );
-                        }
-                    }
-                );
+                    db.run(
+                        `INSERT INTO orders (username, product_name, product_image, queue_position, queue_status, estimated_wait_time, notes, buyer_notes, purchase_time, wait_time_target, last_updated)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        [
+                            searchedUsername,
+                            resolved.product_name,
+                            resolved.product_image,
+                            remoteOrder.queue_position !== undefined ? remoteOrder.queue_position : 1,
+                            remoteOrder.queue_status || 'Processing',
+                            remoteOrder.estimated_wait_time || 'กำลังดำเนินการ',
+                            remoteOrder.notes || 'ดึงและซิงค์ข้อมูลจากเว็บต้นทางเรียบร้อยแล้ว',
+                            remoteOrder.buyer_notes || '',
+                            remoteOrder.purchase_time || now,
+                            remoteOrder.wait_time_target || now,
+                            now
+                        ]
+                    );
+                });
             });
 
             broadcastLog(searchedUsername, 'success', `[Bot Scraper] สแกนพบพรีออเดอร์ของ "${searchedUsername}" ทั้งหมด ${remoteOrders.length} รายการจากเว็บต้นทาง!`);
