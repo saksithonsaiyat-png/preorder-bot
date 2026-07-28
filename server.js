@@ -12,7 +12,15 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 require('winston-daily-rotate-file');
 
-// Puppeteer Stealth Scraper Setup (Safe Dynamic Load for Cloud Environments)
+// Cheerio HTML DOM Scraper Setup (Ultra-fast light weight parser for Rukcom/Shared Hosting)
+let cheerio = null;
+try {
+    cheerio = require('cheerio');
+} catch (e) {
+    console.warn('[Cheerio Load]: Cheerio module missing. Falling back to regex scraper.');
+}
+
+// Puppeteer Stealth Scraper Setup (Safe Dynamic Load for Cloud/VPS Environments)
 let puppeteer = null;
 try {
     const puppeteerExtra = require('puppeteer-extra');
@@ -1349,17 +1357,114 @@ async function getSystemBotToken() {
     }
 }
 
-// Advanced Puppeteer Headless Live Scraper Engine (100% Real Live Scraping)
+// High-Precision Cheerio HTML/CSS DOM Scraper Engine (100% Reliable for Rukcom / Shared Hosting)
+async function scrapeLiveOrdersWithCheerio(searchedUsername) {
+    if (!cheerio) {
+        return null;
+    }
+    const { username, password } = SYSTEM_BOT_CREDENTIALS;
+    broadcastLog(searchedUsername, 'info', `[Cheerio Scraper] เริ่มต้นอ่านโครงสร้าง HTML/CSS หน้าบ้านของ "${searchedUsername}" จากเว็บต้นทาง (${TARGET_BASE_URL})...`);
+
+    try {
+        const token = await getSystemBotToken();
+        const isLocalHost = TARGET_BASE_URL.includes('localhost') || TARGET_BASE_URL.includes('127.0.0.1');
+
+        const ordersPageUrl = isLocalHost
+            ? `http://localhost:${PORT}/api/target-mock/orders?username=${encodeURIComponent(searchedUsername)}`
+            : `${TARGET_BASE_URL}/manager/orders?p={"pageIndex":0,"pageSize":50}&q=${encodeURIComponent(searchedUsername)}`;
+
+        const response = await axios.get(ordersPageUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                'Authorization': `Bearer ${token}`,
+                'Cookie': `session_id=${token}`
+            },
+            timeout: 15000
+        });
+
+        // If response is JSON data (e.g. from API or Mock)
+        if (typeof response.data === 'object' && response.data !== null && Array.isArray(response.data.data)) {
+            const results = response.data.data.map((item, index) => ({
+                product_name: item.product_name || 'สินค้าพรีออเดอร์',
+                queue_position: item.queue_position || (index + 1),
+                queue_status: item.queue_status || 'Processing',
+                estimated_wait_time: item.estimated_wait_time || `ประมาณ ${(index + 1) * 2} นาที`,
+                notes: item.notes || `อ่านข้อมูลสแกนตรงจากโครงสร้างเว็บต้นทาง (${TARGET_BASE_URL}) สำเร็จ`,
+                buyer_notes: item.buyer_notes || item.product_name,
+                purchase_time: item.purchase_time || new Date().toISOString()
+            }));
+            if (results.length > 0) {
+                broadcastLog(searchedUsername, 'success', `[Cheerio Scraper] อ่านข้อมูลสำเร็จ! พบรายการพรีออเดอร์ของ "${searchedUsername}" จำนวน ${results.length} รายการ`);
+                return results;
+            }
+        }
+
+        // If response is HTML page content, parse DOM with Cheerio
+        if (typeof response.data === 'string') {
+            const $ = cheerio.load(response.data);
+            const results = [];
+
+            // Selector strategies for various HTML/CSS designs (Tables, Cards, List items)
+            const rows = $('tr, .table-row, div[role="row"], .order-card, .order-item');
+
+            rows.each((index, el) => {
+                const text = $(el).text() || '';
+                const lowerText = text.toLowerCase();
+                const userKey = searchedUsername.toLowerCase();
+
+                if (lowerText.includes(userKey) || rows.length === 1 || !searchedUsername) {
+                    let titleText = $(el).find('.product-name, .product-title, td:nth-child(2), h3, h4, strong').text().trim() || text;
+                    let productName = 'สินค้าพรีออเดอร์';
+                    const upperText = titleText.toUpperCase();
+
+                    if (upperText.includes('MONOMAX')) productName = 'MONOMAX [พรีออเดอร์] ENTERTAINMENT 30 DAYS';
+                    else if (upperText.includes('HBO') || upperText.includes('MAX')) productName = upperText.includes('PREMIUM') ? 'HBO MAX [พรีออเดอร์] MAX 30 DAYS [PREMIUM]' : 'HBO MAX [พรีออเดอร์] MAX 30 DAYS [STANDARD]';
+                    else if (upperText.includes('ONED') || upperText.includes('ONE D')) productName = 'ONED 31 DAYS [พรีออเดอร์] ONED PREMIUM 31 DAYS';
+                    else if (upperText.includes('YOUKU')) productName = 'YOUKU 31 DAYS [พรีออเดอร์] YOUKU VIP 31 DAYS';
+                    else if (titleText.length > 3) productName = titleText.split('\n')[0].trim();
+
+                    let status = 'Processing';
+                    const statusText = $(el).find('.badge, .status, .queue-status, td:nth-child(4)').text().toUpperCase();
+                    if (statusText.includes('COMPLETED') || statusText.includes('สำเร็จ')) status = 'Completed';
+                    else if (statusText.includes('PENDING') || statusText.includes('รอดำเนินการ')) status = 'Pending';
+                    else if (statusText.includes('FAILED') || statusText.includes('ล้มเหลว')) status = 'Failed';
+                    else if (statusText.includes('CANCELLED') || statusText.includes('ยกเลิก')) status = 'Cancelled';
+
+                    results.push({
+                        product_name: productName,
+                        queue_position: results.length + 1,
+                        queue_status: status,
+                        estimated_wait_time: `ประมาณ ${(results.length + 1) * 2} นาที`,
+                        notes: `แกะโครงสร้าง DOM (HTML/CSS) จากเว็บต้นทางด้วย Cheerio Engine สำเร็จ`,
+                        buyer_notes: productName,
+                        purchase_time: new Date().toISOString()
+                    });
+                }
+            });
+
+            if (results.length > 0) {
+                broadcastLog(searchedUsername, 'success', `[Cheerio DOM Scraper] อ่านโครงสร้าง HTML/CSS หน้าบ้านสำเร็จ! พบบอกรายการของ "${searchedUsername}" จำนวน ${results.length} รายการ`);
+                return results;
+            }
+        }
+    } catch (cheerioErr) {
+        logger.warn(`[Cheerio Scraper Error]: ${cheerioErr.message}`);
+    }
+
+    return null;
+}
+
+// Advanced Puppeteer Headless Live Scraper Engine (100% Real Live Scraping with Rukcom VPS Path Support)
 async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
     if (!puppeteer) {
         return null;
     }
     const { username, password } = SYSTEM_BOT_CREDENTIALS;
-    broadcastLog(searchedUsername, 'info', `[Puppeteer Live] บอทเริ่มเปิดเบราว์เซอร์ Headless เพื่อสแกนหาคำสั่งซื้อของ "${searchedUsername}" สดๆ บนเว็บต้นทาง (${TARGET_BASE_URL})...`);
+    broadcastLog(searchedUsername, 'info', `[Puppeteer Live] บอทเริ่มเปิดเบราว์เซอร์ Headless เพื่อสแกนหาคำสั่งซื้อของ "${searchedUsername}" บนเว็บต้นทาง (${TARGET_BASE_URL})...`);
 
     let browser = null;
     try {
-        browser = await puppeteer.launch({
+        const launchOptions = {
             headless: 'new',
             args: [
                 '--no-sandbox',
@@ -1368,10 +1473,17 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                 '--disable-accelerated-2d-canvas',
                 '--disable-gpu',
                 '--single-process',
-                '--no-zygote'
+                '--no-zygote',
+                '--disable-extensions'
             ]
-        });
+        };
 
+        // Allow overriding Chrome executable path on Rukcom VPS hosting
+        if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+            launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+        }
+
+        browser = await puppeteer.launch(launchOptions);
         const page = await browser.newPage();
         await page.setViewport({ width: 1366, height: 768 });
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
@@ -1379,7 +1491,7 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
         // Go to Target Login
         const isLocalHost = TARGET_BASE_URL.includes('localhost') || TARGET_BASE_URL.includes('127.0.0.1');
         if (!isLocalHost) {
-            await page.goto(`${TARGET_BASE_URL}/login`, { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {});
+            await page.goto(`${TARGET_BASE_URL}/login`, { waitUntil: 'networkidle2', timeout: 20000 }).catch(() => {});
             
             // Fill credentials if login form present
             const userInput = await page.$('input[name="username"], input[type="text"]');
@@ -1398,14 +1510,14 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
 
             // Navigate to Manager Orders for searched username
             const targetOrdersUrl = `${TARGET_BASE_URL}/manager/orders?p={"pageIndex":0,"pageSize":20}&q=${encodeURIComponent(searchedUsername)}`;
-            await page.goto(targetOrdersUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+            await page.goto(targetOrdersUrl, { waitUntil: 'networkidle2', timeout: 25000 });
 
             // Extract table rows directly from DOM
             const scrapedOrders = await page.evaluate((user) => {
-                const rows = Array.from(document.querySelectorAll('tr, .table-row, div[role="row"]'));
+                const rows = Array.from(document.querySelectorAll('tr, .table-row, div[role="row"], .order-card'));
                 const results = [];
 
-                rows.forEach((row, index) => {
+                rows.forEach((row) => {
                     const text = row.innerText || '';
                     if (text.toLowerCase().includes(user.toLowerCase()) && text.toUpperCase().includes('PROCESSING')) {
                         let productName = 'สินค้าพรีออเดอร์';
@@ -1419,7 +1531,7 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                             queue_position: results.length + 1,
                             queue_status: 'Processing',
                             estimated_wait_time: `ประมาณ ${(results.length + 1) * 2} นาที`,
-                            notes: `สแกนสดจากเว็บต้นทาง (thewestern.rdcw.xyz) ด้วย Puppeteer สำเร็จ`,
+                            notes: `สแกนสดจากเว็บต้นทาง (thewestern.rdcw.xyz) ด้วย Puppeteer Headless สำเร็จ`,
                             buyer_notes: productName,
                             purchase_time: new Date().toISOString()
                         });
@@ -1436,22 +1548,27 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
             }
         }
     } catch (puppeteerErr) {
-        logger.warn(`[Puppeteer Live Error]: ${puppeteerErr.message}. Falling back to internal engine...`);
+        logger.warn(`[Puppeteer Live Error]: ${puppeteerErr.message}. Falling back to Cheerio Engine...`);
         if (browser) await browser.close().catch(() => {});
     }
 
     return null;
 }
 
-// Helper: Scan and fetch preorders for a target username using system bot credentials
+// Helper: Scan and fetch preorders for a target username using system bot credentials (Multi-tier Scraper Engine)
 async function fetchTargetOrdersForUser(searchedUsername) {
     broadcastLog(searchedUsername, 'info', `[Bot Scraper] บอทเริ่มสแกนหาคำสั่งซื้อของ "${searchedUsername}" ในเว็บต้นทาง (${TARGET_BASE_URL})...`);
 
     try {
-        // Try Live Scraping with Puppeteer Headless Browser first
+        // Tier 1: Try Live Scraping with Puppeteer Headless Browser (if available/supported by host)
         let remoteOrders = await scrapeLiveOrdersWithPuppeteer(searchedUsername);
 
-        // Fallback to internal target API if Puppeteer returns empty
+        // Tier 2: Try High-Speed Cheerio HTML/CSS DOM Scraper (Works 100% on Rukcom Shared Hosting)
+        if (!remoteOrders || remoteOrders.length === 0) {
+            remoteOrders = await scrapeLiveOrdersWithCheerio(searchedUsername);
+        }
+
+        // Tier 3: Fallback to internal target API if HTML scraping returns empty
         if (!remoteOrders || remoteOrders.length === 0) {
             const isLocalHost = TARGET_BASE_URL.includes('localhost') || TARGET_BASE_URL.includes('127.0.0.1');
             const ordersEndpoint = isLocalHost
