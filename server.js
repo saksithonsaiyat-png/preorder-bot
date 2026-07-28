@@ -1391,7 +1391,8 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
                 estimated_wait_time: item.estimated_wait_time || `ประมาณ ${(index + 1) * 2} นาที`,
                 notes: item.notes || `อ่านข้อมูลสแกนตรงจากโครงสร้างเว็บต้นทาง (${TARGET_BASE_URL}) สำเร็จ`,
                 buyer_notes: item.buyer_notes || item.product_name,
-                purchase_time: item.purchase_time || new Date().toISOString()
+                purchase_time: item.purchase_time || new Date().toISOString(),
+                username: item.username || searchedUsername
             }));
             if (results.length > 0) {
                 broadcastLog(searchedUsername, 'success', `[Cheerio Scraper] อ่านข้อมูลสำเร็จ! พบรายการพรีออเดอร์ของ "${searchedUsername}" จำนวน ${results.length} รายการ`);
@@ -1408,36 +1409,96 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
             const rows = $('tr, .table-row, div[role="row"], .order-card, .order-item');
 
             rows.each((index, el) => {
+                // Skip header row
+                if ($(el).find('th').length > 0) return;
+
                 const text = $(el).text() || '';
                 const lowerText = text.toLowerCase();
                 const userKey = searchedUsername.toLowerCase();
 
-                if (lowerText.includes(userKey) || rows.length === 1 || !searchedUsername) {
-                    let titleText = $(el).find('.product-name, .product-title, td:nth-child(2), h3, h4, strong').text().trim() || text;
-                    let productName = 'สินค้าพรีออเดอร์';
-                    const upperText = titleText.toUpperCase();
+                if (lowerText.includes(userKey) || rows.length <= 3) {
+                    const cells = $(el).find('td, div.cell, .table-col, span.column');
+                    let parsedProduct = '';
+                    let parsedQty = '';
+                    let parsedStatus = 'Processing';
+                    let parsedUser = searchedUsername;
 
-                    if (upperText.includes('MONOMAX')) productName = 'MONOMAX [พรีออเดอร์] ENTERTAINMENT 30 DAYS';
-                    else if (upperText.includes('HBO') || upperText.includes('MAX')) productName = upperText.includes('PREMIUM') ? 'HBO MAX [พรีออเดอร์] MAX 30 DAYS [PREMIUM]' : 'HBO MAX [พรีออเดอร์] MAX 30 DAYS [STANDARD]';
-                    else if (upperText.includes('ONED') || upperText.includes('ONE D')) productName = 'ONED 31 DAYS [พรีออเดอร์] ONED PREMIUM 31 DAYS';
-                    else if (upperText.includes('YOUKU')) productName = 'YOUKU 31 DAYS [พรีออเดอร์] YOUKU VIP 31 DAYS';
-                    else if (titleText.length > 3) productName = titleText.split('\n')[0].trim();
+                    if (cells.length > 0) {
+                        cells.each((i, cell) => {
+                            const cellText = $(cell).text().replace(/\s+/g, ' ').trim();
+                            if (!cellText) return;
 
-                    let status = 'Processing';
-                    const statusText = $(el).find('.badge, .status, .queue-status, td:nth-child(4)').text().toUpperCase();
-                    if (statusText.includes('COMPLETED') || statusText.includes('สำเร็จ')) status = 'Completed';
-                    else if (statusText.includes('PENDING') || statusText.includes('รอดำเนินการ')) status = 'Pending';
-                    else if (statusText.includes('FAILED') || statusText.includes('ล้มเหลว')) status = 'Failed';
-                    else if (statusText.includes('CANCELLED') || statusText.includes('ยกเลิก')) status = 'Cancelled';
+                            const upperVal = cellText.toUpperCase();
+
+                            // 1. Detect Username: exact match or contains searchedUsername
+                            if (cellText.toLowerCase() === userKey) {
+                                parsedUser = cellText;
+                            }
+
+                            // 2. Detect Status:
+                            if (upperVal.includes('PROCESSING') || upperVal.includes('กำลังดำเนินการ') || upperVal.includes('กำลังทำ')) {
+                                parsedStatus = 'Processing';
+                            } else if (upperVal.includes('COMPLETED') || upperVal.includes('สำเร็จ') || upperVal.includes('เสร็จ')) {
+                                parsedStatus = 'Completed';
+                            } else if (upperVal.includes('PENDING') || upperVal.includes('รอดำเนินการ') || upperVal.includes('รอ')) {
+                                parsedStatus = 'Pending';
+                            } else if (upperVal.includes('FAILED') || upperVal.includes('ล้มเหลว')) {
+                                parsedStatus = 'Failed';
+                            } else if (upperVal.includes('CANCELLED') || upperVal.includes('ยกเลิก')) {
+                                parsedStatus = 'Cancelled';
+                            }
+
+                            // 3. Detect Product/Package: contains streaming keywords
+                            if (upperVal.includes('MAX') || upperVal.includes('MONO') || upperVal.includes('ONED') || upperVal.includes('ONE D') || 
+                                upperVal.includes('YOUKU') || upperVal.includes('NETFLIX') || upperVal.includes('DISNEY') || 
+                                upperVal.includes('SPOTIFY') || upperVal.includes('VIU') || upperVal.includes('PREORDER') || upperVal.includes('พรีออเดอร์')) {
+                                if (!parsedProduct || cellText.length > parsedProduct.length) {
+                                    parsedProduct = cellText;
+                                }
+                            }
+
+                            // 4. Detect Quantity: e.g. "1", "2", "x1", "2 จอ", "1 รายการ"
+                            if (/^\d+(\s*(จอ|รายการ|ชิ้น|เครื่อง|slots?|qty|pcs))?$/i.test(cellText) || /^x\d+$/i.test(cellText)) {
+                                parsedQty = cellText;
+                            }
+                        });
+                    }
+
+                    // Fallback selectors for card-based details
+                    if (!parsedProduct) {
+                        parsedProduct = $(el).find('.product-name, .product-title, .title, td:nth-child(2), h3, h4, strong').first().text().replace(/\s+/g, ' ').trim();
+                    }
+                    if (!parsedProduct) {
+                        parsedProduct = text.replace(/\s+/g, ' ').trim();
+                    }
+
+                    let productName = parsedProduct;
+                    let buyerNotes = '';
+
+                    // Split product name and options if it includes specific formats (e.g. "[พรีออเดอร์]" or "พรีออเดอร์")
+                    if (productName.includes('[พรีออเดอร์]')) {
+                        const parts = productName.split('[พรีออเดอร์]');
+                        productName = parts[0].trim() + ' [พรีออเดอร์]';
+                        if (parts[1]) buyerNotes = parts[1].trim();
+                    } else if (productName.includes('พรีออเดอร์')) {
+                        const parts = productName.split('พรีออเดอร์');
+                        productName = parts[0].trim() + ' [พรีออเดอร์]';
+                        if (parts[1]) buyerNotes = parts[1].trim();
+                    }
+
+                    if (parsedQty) {
+                        buyerNotes = buyerNotes ? `${buyerNotes} (จำนวน: ${parsedQty})` : `จำนวน: ${parsedQty}`;
+                    }
 
                     results.push({
                         product_name: productName,
                         queue_position: results.length + 1,
-                        queue_status: status,
+                        queue_status: parsedStatus,
                         estimated_wait_time: `ประมาณ ${(results.length + 1) * 2} นาที`,
                         notes: `แกะโครงสร้าง DOM (HTML/CSS) จากเว็บต้นทางด้วย Cheerio Engine สำเร็จ`,
-                        buyer_notes: productName,
-                        purchase_time: new Date().toISOString()
+                        buyer_notes: buyerNotes || productName,
+                        purchase_time: new Date().toISOString(),
+                        username: parsedUser
                     });
                 }
             });
@@ -1518,22 +1579,88 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                 const results = [];
 
                 rows.forEach((row) => {
+                    // Skip header row
+                    if (row.querySelector('th')) return;
+
                     const text = row.innerText || '';
-                    if (text.toLowerCase().includes(user.toLowerCase()) && text.toUpperCase().includes('PROCESSING')) {
-                        let productName = 'สินค้าพรีออเดอร์';
-                        if (text.includes('MONOMAX')) productName = 'MONOMAX [พรีออเดอร์] ENTERTAINMENT 30 DAYS';
-                        else if (text.includes('HBO') || text.includes('MAX')) productName = text.includes('PREMIUM') ? 'HBO MAX [พรีออเดอร์] MAX 30 DAYS [PREMIUM]' : 'HBO MAX [พรีออเดอร์] MAX 30 DAYS [STANDARD]';
-                        else if (text.includes('ONED') || text.includes('oneD')) productName = 'ONED 31 DAYS [พรีออเดอร์] ONED PREMIUM 31 DAYS';
-                        else if (text.includes('YOUKU')) productName = 'YOUKU 31 DAYS [พรีออเดอร์] YOUKU VIP 31 DAYS';
+                    const lowerText = text.toLowerCase();
+                    const userKey = user.toLowerCase();
+
+                    if (lowerText.includes(userKey) || rows.length <= 3) {
+                        const cells = Array.from(row.querySelectorAll('td, div.cell, .table-col'));
+                        
+                        let detectedProduct = '';
+                        let detectedQty = '';
+                        let detectedUser = '';
+                        let detectedStatus = 'Processing';
+
+                        cells.forEach((cell) => {
+                            const cellText = cell.innerText.replace(/\s+/g, ' ').trim();
+                            if (!cellText) return;
+
+                            const upperText = cellText.toUpperCase();
+
+                            if (cellText.toLowerCase() === user.toLowerCase()) {
+                                detectedUser = cellText;
+                            }
+
+                            if (upperText.includes('PROCESSING') || upperText.includes('กำลังดำเนินการ') || upperText.includes('กำลังทำ')) {
+                                detectedStatus = 'Processing';
+                            } else if (upperText.includes('COMPLETED') || upperText.includes('สำเร็จ') || upperText.includes('เสร็จ')) {
+                                detectedStatus = 'Completed';
+                            } else if (upperText.includes('PENDING') || upperText.includes('รอดำเนินการ') || upperText.includes('รอ')) {
+                                detectedStatus = 'Pending';
+                            } else if (upperText.includes('FAILED') || upperText.includes('ล้มเหลว')) {
+                                detectedStatus = 'Failed';
+                            } else if (upperText.includes('CANCELLED') || upperText.includes('ยกเลิก')) {
+                                detectedStatus = 'Cancelled';
+                            }
+
+                            if (upperText.includes('MAX') || upperText.includes('MONO') || upperText.includes('ONED') || upperText.includes('ONE D') || 
+                                upperText.includes('YOUKU') || upperText.includes('NETFLIX') || upperText.includes('DISNEY') || 
+                                upperText.includes('SPOTIFY') || upperText.includes('VIU') || upperText.includes('PREORDER') || upperText.includes('พรีออเดอร์')) {
+                                if (!detectedProduct || cellText.length > detectedProduct.length) {
+                                    detectedProduct = cellText;
+                                }
+                            }
+
+                            if (/^\d+(\s*(จอ|รายการ|ชิ้น|เครื่อง|slots?|qty|pcs))?$/i.test(cellText) || /^x\d+$/i.test(cellText)) {
+                                detectedQty = cellText;
+                            }
+                        });
+
+                        if (!detectedUser) {
+                            detectedUser = user;
+                        }
+
+                        if (!detectedProduct) {
+                            const secondCol = row.querySelector('td:nth-child(2)');
+                            detectedProduct = secondCol ? secondCol.innerText.replace(/\s+/g, ' ').trim() : text.replace(/\s+/g, ' ').trim();
+                        }
+
+                        let productName = detectedProduct;
+                        let buyerNotes = '';
+                        if (productName.includes('[พรีออเดอร์]')) {
+                            const parts = productName.split('[พรีออเดอร์]');
+                            if (parts[1]) buyerNotes = parts[1].trim();
+                        } else if (productName.includes('พรีออเดอร์')) {
+                            const parts = productName.split('พรีออเดอร์');
+                            if (parts[1]) buyerNotes = parts[1].trim();
+                        }
+
+                        if (detectedQty) {
+                            buyerNotes = buyerNotes ? `${buyerNotes} (จำนวน: ${detectedQty})` : `จำนวน: ${detectedQty}`;
+                        }
 
                         results.push({
                             product_name: productName,
                             queue_position: results.length + 1,
-                            queue_status: 'Processing',
+                            queue_status: detectedStatus,
                             estimated_wait_time: `ประมาณ ${(results.length + 1) * 2} นาที`,
                             notes: `สแกนสดจากเว็บต้นทาง (thewestern.rdcw.xyz) ด้วย Puppeteer Headless สำเร็จ`,
-                            buyer_notes: productName,
-                            purchase_time: new Date().toISOString()
+                            buyer_notes: buyerNotes || productName,
+                            purchase_time: new Date().toISOString(),
+                            username: detectedUser
                         });
                     }
                 });
@@ -1600,7 +1727,7 @@ async function fetchTargetOrdersForUser(searchedUsername) {
                         `INSERT INTO orders (username, product_name, product_image, queue_position, queue_status, estimated_wait_time, notes, buyer_notes, purchase_time, wait_time_target, last_updated)
                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                         [
-                            searchedUsername,
+                            remoteOrder.username || searchedUsername,
                             resolved.product_name,
                             resolved.product_image,
                             remoteOrder.queue_position !== undefined ? remoteOrder.queue_position : 1,
