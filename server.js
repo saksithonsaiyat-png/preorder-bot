@@ -682,6 +682,22 @@ app.get('/api/admin/audit-logs', authMiddleware, (req, res) => {
     );
 });
 
+app.get('/api/admin/app-logs', authMiddleware, (req, res) => {
+    try {
+        const today = new Date().toISOString().slice(0, 10);
+        const logPath = path.join(__dirname, 'logs', `application-${today}.log`);
+        if (!fs.existsSync(logPath)) {
+            return res.json({ success: true, logs: 'No logs found for today.' });
+        }
+        const logContent = fs.readFileSync(logPath, 'utf8');
+        const lines = logContent.split('\n');
+        const lastLines = lines.slice(-200).join('\n');
+        res.json({ success: true, logs: lastLines });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 // ==========================================
 // ACCOUNTS MANAGEMENT ENDPOINT
 // ==========================================
