@@ -664,7 +664,8 @@ app.get('/api/admin/settings', authMiddleware, (req, res) => {
             data: {
                 is_queue_active: settings.is_queue_active === '1',
                 closed_message: settings.closed_message || 'ระบบปิดปรับปรุงชั่วคราว',
-                target_cookies: settings.target_cookies || ''
+                target_cookies: settings.target_cookies || '',
+                capsolver_key: settings.capsolver_key || ''
             }
         });
     });
@@ -672,7 +673,7 @@ app.get('/api/admin/settings', authMiddleware, (req, res) => {
 
 // Admin endpoint - save settings
 app.post('/api/admin/settings', authMiddleware, (req, res) => {
-    const { is_queue_active, closed_message, target_cookies } = req.body;
+    const { is_queue_active, closed_message, target_cookies, capsolver_key } = req.body;
     const adminName = req.adminUser.username;
 
     db.serialize(() => {
@@ -682,6 +683,9 @@ app.post('/api/admin/settings', authMiddleware, (req, res) => {
         if (target_cookies !== undefined) {
             stmt.run('target_cookies', target_cookies.trim());
             cachedTargetCookies = target_cookies.trim();
+        }
+        if (capsolver_key !== undefined) {
+            stmt.run('capsolver_key', capsolver_key.trim());
         }
         stmt.finalize();
     });
@@ -1369,49 +1373,139 @@ async function getTargetCookies() {
     });
 }
 
+// Helper: Solve CAPTCHA (reCAPTCHA v2 / Turnstile) using CapSolver API
+async function solveCaptchaWithCapSolver(searchedUsername) {
+    try {
+        // Load CapSolver API key from database setting if exists, otherwise fallback to hardcoded
+        const capsolverKey = await new Promise((resolve) => {
+            db.get("SELECT value FROM system_settings WHERE key = 'capsolver_key'", [], (err, row) => {
+                resolve((row && row.value) ? row.value.trim() : 'CAP-23560DFB2B9F4974F82139DD5B83DCCEDEBF8085454CC30621DD1993BA298F25');
+            });
+        });
+
+        if (!capsolverKey) {
+            logger.warn(`[CapSolver] No API key configured. Skipping CAPTCHA solving.`);
+            return null;
+        }
+
+        broadcastLog(searchedUsername || 'System', 'info', `[CapSolver] กำลังสั่งแก้ Captcha ป้องกันเว็บต้นทางด้วย CapSolver API...`);
+
+        // Create Task for Google reCAPTCHA v2 Invisible
+        const createTaskRes = await axios.post('https://api.capsolver.com/createTask', {
+            clientKey: capsolverKey,
+            task: {
+                type: "ReCaptchaV2TaskProxyLess",
+                websiteURL: `${TARGET_BASE_URL}/auth/signin`,
+                websiteKey: '6Lc3wEEpAAAAAJamvs_j0NT-Edj1mLp-u8b0ljvt',
+                isInvisible: true
+            }
+        });
+
+        const taskId = createTaskRes.data.taskId;
+        if (!taskId) {
+            throw new Error(`สร้าง Task แก้กัปช่าล้มเหลว: ${JSON.stringify(createTaskRes.data)}`);
+        }
+
+        let retries = 0;
+        while (retries < 20) {
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            const resultRes = await axios.post('https://api.capsolver.com/getTaskResult', {
+                clientKey: capsolverKey,
+                taskId: taskId
+            });
+
+            if (resultRes.data.status === "ready") {
+                broadcastLog(searchedUsername || 'System', 'success', `[CapSolver] แก้ไข Captcha สำเร็จเรียบร้อย!`);
+                return resultRes.data.solution.gRecaptchaResponse;
+            }
+
+            if (resultRes.data.status === "failed") {
+                throw new Error(`CapSolver แก้ไขล้มเหลว: ${JSON.stringify(resultRes.data)}`);
+            }
+            retries++;
+        }
+        throw new Error(`ระยะเวลาแก้กัปช่าเกินกำหนด (Timeout)`);
+    } catch (err) {
+        logger.error(`[CapSolver Error]: ${err.message}`);
+        broadcastLog(searchedUsername || 'System', 'warn', `[CapSolver] ไม่สามารถแก้ไข Captcha ได้: ${err.message}`);
+        return null;
+    }
+}
+
 // Helper: Obtain System Bot Token using TEST4455 / TEST4455@
 async function getSystemBotToken() {
     if (systemSessionToken && Date.now() < systemTokenExpiresAt) {
         return systemSessionToken;
     }
 
-    const proxy = getNextProxy();
     const { username, password } = SYSTEM_BOT_CREDENTIALS;
-
-    broadcastLog(username, 'info', `[Bot Scraper] กำลังล็อกอินไปยังเว็บต้นทาง (${TARGET_BASE_URL}) ด้วยบัญชีหลักระบบ (${username})...`);
+    broadcastLog(username, 'info', `[Bot Scraper] กำลังล็อกอินเข้าเว็บต้นทาง (${TARGET_BASE_URL}) ด้วยบัญชีระบบหลัก (${username}) เพื่อขอสิทธิ์คุกกี้เซสชันใหม่...`);
 
     try {
-        const axiosConfig = createProxyAxiosConfig(proxy, {
+        const isLocalHost = TARGET_BASE_URL.includes('localhost') || TARGET_BASE_URL.includes('127.0.0.1');
+        
+        // Fetch CSRF token first
+        const csrfUrl = `${TARGET_BASE_URL}/api/auth/csrf`;
+        const csrfRes = await axios.get(csrfUrl, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                'Content-Type': 'application/json'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
             }
         });
+        const csrfToken = csrfRes.data.csrfToken;
+        const csrfCookies = csrfRes.headers['set-cookie'];
+        const csrfCookieStr = csrfCookies ? csrfCookies.map(c => c.split(';')[0]).join('; ') : '';
 
-        const isLocalHost = TARGET_BASE_URL.includes('localhost') || TARGET_BASE_URL.includes('127.0.0.1');
-        const loginEndpoint = isLocalHost ? `${TARGET_BASE_URL}/api/target-mock/login` : `${TARGET_BASE_URL}/api/login`;
-
-        let response;
-        try {
-            response = await axios.post(loginEndpoint, { username, password }, axiosConfig);
-        } catch (targetErr) {
-            const mockUrl = `http://localhost:${PORT}/api/target-mock/login`;
-            response = await axios.post(mockUrl, { username, password });
+        // Solve captcha
+        let captchaToken = null;
+        if (!isLocalHost) {
+            captchaToken = await solveCaptchaWithCapSolver(username);
         }
 
-        if (response.data && response.data.success) {
-            systemSessionToken = response.data.token || (response.headers['set-cookie'] ? response.headers['set-cookie'].join('; ') : `system_token_${Date.now()}`);
+        // POST credentials signin request to next-auth callback
+        const loginPayload = {
+            csrfToken: csrfToken,
+            username: username,
+            password: password,
+            callbackUrl: `${TARGET_BASE_URL}/`,
+            json: 'true'
+        };
+        if (captchaToken) {
+            loginPayload['g-recaptcha-response'] = captchaToken;
+        }
+
+        const loginUrl = `${TARGET_BASE_URL}/api/auth/callback/credentials`;
+        const loginRes = await axios.post(loginUrl,
+            new URLSearchParams(loginPayload).toString(),
+            {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Cookie': csrfCookieStr
+                },
+                maxRedirects: 0,
+                validateStatus: (status) => status >= 200 && status < 400
+            }
+        );
+
+        const loginCookies = loginRes.headers['set-cookie'];
+        const sessionCookieStr = loginCookies ? loginCookies.map(c => c.split(';')[0]).join('; ') : '';
+
+        if (sessionCookieStr) {
+            systemSessionToken = sessionCookieStr;
             systemTokenExpiresAt = Date.now() + 30 * 60 * 1000;
-            broadcastLog(username, 'success', `[Bot Scraper] ล็อกอินบัญชีหลักระบบ ${username} เข้าเว็บต้นทางสำเร็จ!`);
-            return systemSessionToken;
+            cachedTargetCookies = sessionCookieStr;
+            
+            // Save newly fetched session cookies to system settings DB
+            db.run("INSERT OR REPLACE INTO system_settings (key, value) VALUES ('target_cookies', ?)", [sessionCookieStr]);
+            
+            broadcastLog(username, 'success', `[Bot Scraper] ล็อกอินข้ามกัปช่าและขอสิทธิ์คุกกี้เซสชันของระบบต้นทางสำเร็จ!`);
+            return sessionCookieStr;
         } else {
-            throw new Error(response.data.message || 'System bot login rejected');
+            throw new Error('NextAuth rejected signin, session cookies were not returned');
         }
     } catch (err) {
         broadcastLog(username, 'error', `[Bot Scraper] ล็อกอินเว็บต้นทางด้วย ${username} ล้มเหลว: ${err.message}`);
-        systemSessionToken = `system_token_${Date.now()}`;
-        systemTokenExpiresAt = Date.now() + 5 * 60 * 1000;
-        return systemSessionToken;
+        return null;
     }
 }
 
