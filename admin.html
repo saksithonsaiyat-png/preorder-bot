@@ -395,6 +395,10 @@
                             <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">ข้อความแจ้งผู้ใช้ (กรณีปิดบริการ)</label>
                             <textarea x-model="settingsForm.closed_message" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white h-24 resize-none" required></textarea>
                         </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">Target Session Cookies (คุกกี้ล็อกอินของเว็บต้นทาง - เลี่ยง Captcha)</label>
+                            <textarea x-model="settingsForm.target_cookies" placeholder="ตัวอย่าง: __Host-next-auth.csrf-token=...; next-auth.session-token=..." class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-white h-24 font-mono" style="word-break: break-all;"></textarea>
+                        </div>
                         <button type="submit" class="bg-primary hover:opacity-90 text-white font-semibold py-2 px-5 rounded-lg text-sm transition">บันทึกการตั้งค่า</button>
                     </form>
                 </div>
@@ -575,7 +579,7 @@
                 selectedOrder: { id: null, queue_status: '', override_minutes: '', queue_position: 0 },
 
                 // Settings state
-                settingsForm: { is_queue_active: true, closed_message: '' },
+                settingsForm: { is_queue_active: true, closed_message: '', target_cookies: '' },
                 profileForm: { newUsername: '', newPassword: '' },
                 newAdminForm: { username: '', password: '' },
 
@@ -774,12 +778,13 @@
 
                 async fetchSystemSettings() {
                     try {
-                        const res = await fetch('/api/settings');
+                        const res = await fetch('/api/admin/settings', { headers: this.getHeaders() });
                         if (res.ok) {
                             const result = await res.json();
                             if (result.success) {
                                 this.settingsForm.is_queue_active = result.data.is_queue_active;
                                 this.settingsForm.closed_message = result.data.closed_message;
+                                this.settingsForm.target_cookies = result.data.target_cookies || '';
                             }
                         }
                     } catch (e) { }

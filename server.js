@@ -649,18 +649,45 @@ app.get('/api/settings', (req, res) => {
     });
 });
 
+// Admin endpoint - get settings (authenticated)
+app.get('/api/admin/settings', authMiddleware, (req, res) => {
+    db.all("SELECT * FROM system_settings", [], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ success: false, message: 'Database error' });
+        }
+        const settings = {};
+        (rows || []).forEach(row => {
+            settings[row.key] = row.value;
+        });
+        res.json({
+            success: true,
+            data: {
+                is_queue_active: settings.is_queue_active === '1',
+                closed_message: settings.closed_message || 'ระบบปิดปรับปรุงชั่วคราว',
+                target_cookies: settings.target_cookies || ''
+            }
+        });
+    });
+});
+
 // Admin endpoint - save settings
 app.post('/api/admin/settings', authMiddleware, (req, res) => {
-    const { is_queue_active, closed_message } = req.body;
+    const { is_queue_active, closed_message, target_cookies } = req.body;
     const adminName = req.adminUser.username;
 
-    const stmt = db.prepare("INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)");
-    stmt.run('is_queue_active', is_queue_active ? '1' : '0');
-    stmt.run('closed_message', closed_message || 'ระบบปิดปรับปรุงชั่วคราว');
-    stmt.finalize();
+    db.serialize(() => {
+        const stmt = db.prepare("INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)");
+        stmt.run('is_queue_active', is_queue_active ? '1' : '0');
+        stmt.run('closed_message', closed_message || 'ระบบปิดปรับปรุงชั่วคราว');
+        if (target_cookies !== undefined) {
+            stmt.run('target_cookies', target_cookies.trim());
+            cachedTargetCookies = target_cookies.trim();
+        }
+        stmt.finalize();
+    });
 
     const statusText = is_queue_active ? 'เปิดให้บริการ' : 'ปิดให้บริการ';
-    addAuditLog(adminName, `เปลี่ยนแปลงตั้งค่าระบบ: ${statusText} (ข้อความ: ${closed_message})`);
+    addAuditLog(adminName, `เปลี่ยนแปลงตั้งค่าระบบ: ${statusText}`);
     logger.info(`[Admin: ${adminName}] System settings updated: queue=${statusText}`);
 
     res.json({ success: true, message: 'บันทึกการตั้งค่าเรียบร้อย' });
@@ -1328,6 +1355,20 @@ let systemSessionToken = null;
 let systemTokenExpiresAt = 0;
 let cachedTargetCookies = null;
 
+async function getTargetCookies() {
+    if (cachedTargetCookies) return cachedTargetCookies;
+    return new Promise((resolve) => {
+        db.get("SELECT value FROM system_settings WHERE key = 'target_cookies'", [], (err, row) => {
+            if (!err && row && row.value) {
+                cachedTargetCookies = row.value;
+                resolve(cachedTargetCookies);
+            } else {
+                resolve(null);
+            }
+        });
+    });
+}
+
 // Helper: Obtain System Bot Token using TEST4455 / TEST4455@
 async function getSystemBotToken() {
     if (systemSessionToken && Date.now() < systemTokenExpiresAt) {
@@ -1423,7 +1464,8 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
     try {
         const isLocalHost = TARGET_BASE_URL.includes('localhost') || TARGET_BASE_URL.includes('127.0.0.1');
 
-        if (!isLocalHost && !cachedTargetCookies) {
+        const targetCookies = await getTargetCookies();
+        if (!isLocalHost && !targetCookies) {
             logger.info('[Cheerio Scraper] No cached cookies available, skipping to Puppeteer...');
             return null;
         }
@@ -1441,7 +1483,7 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
             headers['Authorization'] = `Bearer ${token}`;
             headers['Cookie'] = `session_id=${token}`;
         } else {
-            headers['Cookie'] = cachedTargetCookies;
+            headers['Cookie'] = targetCookies;
         }
 
         const response = await axios.get(ordersPageUrl, {
@@ -1743,7 +1785,8 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
 
             const cookies = await page.cookies();
             cachedTargetCookies = cookies.map(c => `${c.name}=${c.value}`).join('; ');
-            logger.info(`[Puppeteer Live] Session cookies cached successfully.`);
+            db.run("INSERT OR REPLACE INTO system_settings (key, value) VALUES ('target_cookies', ?)", [cachedTargetCookies]);
+            logger.info(`[Puppeteer Live] Session cookies cached and saved to DB successfully.`);
 
             await browser.close();
             if (scrapedOrders && scrapedOrders.length > 0) {
@@ -1804,7 +1847,7 @@ async function fetchTargetOrdersForUser(searchedUsername) {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
                 };
                 if (!isLocalHost) {
-                    headers['Cookie'] = cachedTargetCookies;
+                    headers['Cookie'] = await getTargetCookies();
                 } else {
                     const token = await getSystemBotToken();
                     headers['Authorization'] = `Bearer ${token}`;
@@ -1812,8 +1855,14 @@ async function fetchTargetOrdersForUser(searchedUsername) {
                 }
                 response = await axios.get(ordersEndpoint, { headers, timeout: 10000 });
             } catch (targetErr) {
-                const mockUrl = `http://localhost:${PORT}/api/target-mock/orders?username=${encodeURIComponent(searchedUsername)}`;
-                response = await axios.get(mockUrl);
+                if (isLocalHost || process.env.NODE_ENV !== 'production') {
+                    logger.info(`[Bot Scraper] Fetching real orders failed (${targetErr.message}), falling back to mock orders in development...`);
+                    const mockUrl = `http://localhost:${PORT}/api/target-mock/orders?username=${encodeURIComponent(searchedUsername)}`;
+                    response = await axios.get(mockUrl);
+                } else {
+                    logger.error(`[Bot Scraper] Failed to fetch target orders for ${searchedUsername}: ${targetErr.message}`);
+                    throw new Error(`ไม่สามารถเชื่อมต่อหรือซิงค์ข้อมูลกับเว็บต้นทางได้: ${targetErr.message}`);
+                }
             }
 
             if (response.data && response.data.success && Array.isArray(response.data.data)) {
