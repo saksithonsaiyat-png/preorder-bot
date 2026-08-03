@@ -1562,7 +1562,8 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
         let pageIndex = 0;
         let hasMore = true;
         let allResults = [];
-        const seenKeys = new Set();
+        const seenOrderKeys = new Set();
+        const seenRowKeys = new Set();
         const maxPages = 15; // Safeguard to prevent infinite loops
 
         while (hasMore && pageIndex < maxPages) {
@@ -1621,12 +1622,20 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
 
                 // Selector strategies for various HTML/CSS designs (Tables, Cards, List items)
                 const rows = $('table tbody tr, tr, .table-row, div[role="row"], .order-card');
-                let validRowsCount = 0;
+                let pageRowsCount = 0;
+                let newRowsCount = 0;
 
                 rows.each((index, el) => {
                     // Skip header row
                     if ($(el).find('th').length > 0) return;
-                    validRowsCount++;
+                    pageRowsCount++;
+
+                    // Generate raw row key to detect duplicate pages
+                    const rawRowText = $(el).text().trim();
+                    if (!seenRowKeys.has(rawRowText)) {
+                        seenRowKeys.add(rawRowText);
+                        newRowsCount++;
+                    }
 
                     const cells = $(el).find('td, div.cell, .table-col');
                     if (cells.length < 5) return;
@@ -1717,24 +1726,22 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
                     });
                 });
 
-                if (pageResults.length === 0 || isLocalHost) {
+                if (pageRowsCount === 0 || isLocalHost) {
                     hasMore = false;
                     if (isLocalHost && pageResults.length > 0) {
                         allResults = pageResults;
                     }
                 } else {
-                    let newOrdersCount = 0;
                     for (const order of pageResults) {
                         const key = `${order.product_name}|${order.username}|${order.purchase_time}`;
-                        if (!seenKeys.has(key)) {
-                            seenKeys.add(key);
+                        if (!seenOrderKeys.has(key)) {
+                            seenOrderKeys.add(key);
                             allResults.push(order);
-                            newOrdersCount++;
                         }
                     }
 
-                    // Stop if no new orders found or target page does not have a full batch (meaning no next page)
-                    if (newOrdersCount === 0 || validRowsCount < 50) {
+                    // Stop if no new rows found on the page (meaning duplicate page returned or reached end)
+                    if (newRowsCount === 0) {
                         hasMore = false;
                     } else {
                         pageIndex++;
@@ -1861,7 +1868,8 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
 
             let pageIndex = 0;
             let hasMore = true;
-            const seenKeys = new Set();
+            const seenOrderKeys = new Set();
+            const seenRowKeys = new Set();
             const maxPages = 15;
 
             while (hasMore && pageIndex < maxPages) {
@@ -1878,12 +1886,13 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                 const pageOrdersResult = await page.evaluate((user) => {
                     const rows = Array.from(document.querySelectorAll('table tbody tr, tr, .table-row, div[role="row"], .order-card'));
                     const results = [];
-                    let validRowsCount = 0;
+                    const rowTexts = [];
+                    let pageRowsCount = 0;
 
                     rows.forEach((row) => {
                         // Skip header row
                         if (row.querySelector('th')) return;
-                        validRowsCount++;
+                        pageRowsCount++;
 
                         const cells = Array.from(row.querySelectorAll('td, div.cell, .table-col'));
                         if (cells.length < 5) return;
@@ -1964,25 +1973,32 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                             raw_created_at: parsedCreatedAt,
                             username: parsedUser
                         });
+                        rowTexts.push(row.innerText.replace(/\s+/g, ' ').trim());
                     });
 
-                    return { results, validRowsCount };
+                    return { results, pageRowsCount, rowTexts };
                 }, searchedUsername);
 
-                if (!pageOrdersResult || !pageOrdersResult.results || pageOrdersResult.results.length === 0) {
+                if (!pageOrdersResult || pageOrdersResult.pageRowsCount === 0) {
                     hasMore = false;
                 } else {
-                    let newOrdersCount = 0;
-                    for (const order of pageOrdersResult.results) {
-                        const key = `${order.product_name}|${order.username}|${order.raw_created_at}`;
-                        if (!seenKeys.has(key)) {
-                            seenKeys.add(key);
-                            allScrapedOrders.push(order);
-                            newOrdersCount++;
+                    let newRowsCount = 0;
+                    pageOrdersResult.rowTexts.forEach(text => {
+                        if (!seenRowKeys.has(text)) {
+                            seenRowKeys.add(text);
+                            newRowsCount++;
                         }
-                    }
+                    });
 
-                    if (newOrdersCount === 0 || pageOrdersResult.validRowsCount < 50) {
+                    pageOrdersResult.results.forEach(order => {
+                        const key = `${order.product_name}|${order.username}|${order.raw_created_at}`;
+                        if (!seenOrderKeys.has(key)) {
+                            seenOrderKeys.add(key);
+                            allScrapedOrders.push(order);
+                        }
+                    });
+
+                    if (newRowsCount === 0) {
                         hasMore = false;
                     } else {
                         pageIndex++;
