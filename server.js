@@ -1358,6 +1358,7 @@ app.get('/api/target-mock/orders', (req, res) => {
 let systemSessionToken = null;
 let systemTokenExpiresAt = 0;
 let cachedTargetCookies = null;
+const lastScrapeTime = {};
 
 async function getTargetCookies() {
     if (cachedTargetCookies) return cachedTargetCookies;
@@ -1555,15 +1556,9 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
     const { username, password } = SYSTEM_BOT_CREDENTIALS;
     broadcastLog(searchedUsername, 'info', `[Cheerio Scraper] เริ่มต้นอ่านโครงสร้าง HTML/CSS หน้าบ้านของ "${searchedUsername}" จากเว็บต้นทาง (${TARGET_BASE_URL})...`);
 
-    try {
-        const isLocalHost = TARGET_BASE_URL.includes('localhost') || TARGET_BASE_URL.includes('127.0.0.1');
+    const isLocalHost = TARGET_BASE_URL.includes('localhost') || TARGET_BASE_URL.includes('127.0.0.1');
 
-        const targetCookies = await getTargetCookies();
-        if (!isLocalHost && !targetCookies) {
-            logger.info('[Cheerio Scraper] No cached cookies available, skipping to Puppeteer...');
-            return null;
-        }
-
+    async function executeScrape(cookies) {
         const ordersPageUrl = isLocalHost
             ? `http://localhost:${PORT}/api/target-mock/orders?username=${encodeURIComponent(searchedUsername)}`
             : `${TARGET_BASE_URL}/manager/orders?p={"pageIndex":0,"pageSize":200}&q=${encodeURIComponent(searchedUsername)}`;
@@ -1576,8 +1571,8 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
             const token = await getSystemBotToken();
             headers['Authorization'] = `Bearer ${token}`;
             headers['Cookie'] = `session_id=${token}`;
-        } else {
-            headers['Cookie'] = targetCookies;
+        } else if (cookies) {
+            headers['Cookie'] = cookies;
         }
 
         const response = await axios.get(ordersPageUrl, {
@@ -1607,9 +1602,7 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
         if (typeof response.data === 'string') {
             const isLogged = response.data.includes('จัดการหลังบ้าน') || response.data.includes('จัดการออเดอร์') || response.data.includes('ประวัติ / บันทึกการทำรายการ') || (!response.data.includes('signin') && !response.data.includes('ไม่พบหน้านี้') && !response.data.includes('Login'));
             if (!isLocalHost && !isLogged) {
-                logger.warn(`[Cheerio Scraper] Not authenticated on target site. Clearing cached cookies.`);
-                cachedTargetCookies = null;
-                return null;
+                return { needsLogin: true };
             }
 
             const $ = cheerio.load(response.data);
@@ -1711,11 +1704,44 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
                 });
             });
 
-            if (results.length > 0) {
-                broadcastLog(searchedUsername, 'success', `[Cheerio DOM Scraper] อ่านโครงสร้าง HTML/CSS หน้าบ้านสำเร็จ! พบบอกรายการของ "${searchedUsername}" จำนวน ${results.length} รายการ`);
-                return results;
+            broadcastLog(searchedUsername, 'success', `[Cheerio DOM Scraper] อ่านโครงสร้าง HTML/CSS หน้าบ้านสำเร็จ! พบบอกรายการของ "${searchedUsername}" จำนวน ${results.length} รายการ`);
+            return results;
+        }
+        return null;
+    }
+
+    try {
+        let targetCookies = await getTargetCookies();
+        if (!isLocalHost && !targetCookies) {
+            logger.info('[Cheerio Scraper] No cached cookies available, performing programmatic login...');
+            targetCookies = await getSystemBotToken();
+            if (!targetCookies) {
+                logger.info('[Cheerio Scraper] Programmatic login failed, skipping to Puppeteer...');
+                return null;
             }
         }
+
+        let runResult = await executeScrape(targetCookies);
+        if (runResult && runResult.needsLogin) {
+            logger.warn(`[Cheerio Scraper] Not authenticated on target site. Clearing cached cookies and logging in...`);
+            cachedTargetCookies = null;
+            db.run("DELETE FROM system_settings WHERE key = 'target_cookies'");
+
+            targetCookies = await getSystemBotToken();
+            if (targetCookies) {
+                logger.info('[Cheerio Scraper] Retrying scrape with fresh session cookies...');
+                runResult = await executeScrape(targetCookies);
+                if (runResult && runResult.needsLogin) {
+                    logger.error('[Cheerio Scraper] Still not authenticated after login refresh.');
+                    return null;
+                }
+                return runResult;
+            } else {
+                logger.error('[Cheerio Scraper] Login refresh failed.');
+                return null;
+            }
+        }
+        return runResult;
     } catch (cheerioErr) {
         logger.warn(`[Cheerio Scraper Error]: ${cheerioErr.message}`);
     }
@@ -1883,7 +1909,7 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
             logger.info(`[Puppeteer Live] Session cookies cached and saved to DB successfully.`);
 
             await browser.close();
-            if (scrapedOrders && scrapedOrders.length > 0) {
+            if (Array.isArray(scrapedOrders)) {
                 const finalOrders = scrapedOrders.map((order, index) => {
                     const purchaseTime = parseThaiDate(order.raw_created_at);
                     const queuePos = index + 1;
@@ -1928,8 +1954,8 @@ async function fetchTargetOrdersForUser(searchedUsername) {
             remoteOrders = await scrapeLiveOrdersWithPuppeteer(searchedUsername);
         }
 
-        // Tier 3: Fallback to internal target API if HTML scraping returns empty
-        if (!remoteOrders || remoteOrders.length === 0) {
+        // Tier 3: Fallback to internal target API if HTML scraping failed
+        if (remoteOrders === null) {
             const isLocalHost = TARGET_BASE_URL.includes('localhost') || TARGET_BASE_URL.includes('127.0.0.1');
             const ordersEndpoint = isLocalHost
                 ? `${TARGET_BASE_URL}/api/target-mock/orders?username=${encodeURIComponent(searchedUsername)}`
@@ -1949,14 +1975,8 @@ async function fetchTargetOrdersForUser(searchedUsername) {
                 }
                 response = await axios.get(ordersEndpoint, { headers, timeout: 10000 });
             } catch (targetErr) {
-                if (isLocalHost || process.env.NODE_ENV !== 'production') {
-                    logger.info(`[Bot Scraper] Fetching real orders failed (${targetErr.message}), falling back to mock orders in development...`);
-                    const mockUrl = `http://localhost:${PORT}/api/target-mock/orders?username=${encodeURIComponent(searchedUsername)}`;
-                    response = await axios.get(mockUrl);
-                } else {
-                    logger.error(`[Bot Scraper] Failed to fetch target orders for ${searchedUsername}: ${targetErr.message}`);
-                    throw new Error(`ไม่สามารถเชื่อมต่อหรือซิงค์ข้อมูลกับเว็บต้นทางได้: ${targetErr.message}`);
-                }
+                logger.error(`[Bot Scraper] Failed to fetch target orders for ${searchedUsername}: ${targetErr.message}`);
+                throw new Error(`ไม่สามารถเชื่อมต่อหรือซิงค์ข้อมูลกับเว็บต้นทางได้: ${targetErr.message}`);
             }
 
             if (response.data && response.data.success && Array.isArray(response.data.data)) {
@@ -2065,7 +2085,27 @@ app.get('/api/check-queue', (req, res) => {
             return res.status(400).json({ success: false, message: 'กรุณาระบุชื่อผู้ใช้งาน' });
         }
 
+        const now = Date.now();
+        const userKey = username.toLowerCase();
+        const lastTime = lastScrapeTime[userKey] || 0;
+        if (now - lastTime < 30000) {
+            logger.info(`[API] Returning cached orders for "${username}" (last scraped ${((now - lastTime)/1000).toFixed(1)}s ago)`);
+            db.all("SELECT * FROM orders WHERE LOWER(username) = LOWER(?) AND queue_status IN ('Pending', 'Processing') ORDER BY purchase_time DESC", [username], (err, orders) => {
+                if (err) {
+                    logger.error(err.message);
+                    return res.status(500).json({ success: false, message: 'Database error' });
+                }
+                return res.json({
+                    success: true,
+                    account_exists: true,
+                    data: orders || []
+                });
+            });
+            return;
+        }
+
         logger.info(`[API] Bot scanning orders for searched user: "${username}"`);
+        lastScrapeTime[userKey] = now;
 
         // Bot uses TEST4455 system credentials to scan target site for user orders
         fetchTargetOrdersForUser(username).finally(() => {
