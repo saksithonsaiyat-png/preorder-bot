@@ -1559,155 +1559,194 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
     const isLocalHost = TARGET_BASE_URL.includes('localhost') || TARGET_BASE_URL.includes('127.0.0.1');
 
     async function executeScrape(cookies) {
-        const ordersPageUrl = isLocalHost
-            ? `http://localhost:${PORT}/api/target-mock/orders?username=${encodeURIComponent(searchedUsername)}`
-            : `${TARGET_BASE_URL}/manager/orders?p={"pageIndex":0,"pageSize":200}&q=${encodeURIComponent(searchedUsername)}`;
+        let pageIndex = 0;
+        let hasMore = true;
+        let allResults = [];
+        const seenKeys = new Set();
+        const maxPages = 15; // Safeguard to prevent infinite loops
 
-        const headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-        };
+        while (hasMore && pageIndex < maxPages) {
+            const pParam = JSON.stringify({ pageIndex: pageIndex, pageSize: 50 });
+            const ordersPageUrl = isLocalHost
+                ? `http://localhost:${PORT}/api/target-mock/orders?username=${encodeURIComponent(searchedUsername)}`
+                : `${TARGET_BASE_URL}/manager/orders?p=${encodeURIComponent(pParam)}&q=${encodeURIComponent(searchedUsername)}`;
 
-        if (isLocalHost) {
-            const token = await getSystemBotToken();
-            headers['Authorization'] = `Bearer ${token}`;
-            headers['Cookie'] = `session_id=${token}`;
-        } else if (cookies) {
-            headers['Cookie'] = cookies;
-        }
+            logger.info(`[Cheerio Scraper] Requesting Page ${pageIndex} URL: ${ordersPageUrl}`);
 
-        const response = await axios.get(ordersPageUrl, {
-            headers,
-            timeout: 15000
-        });
+            const headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+            };
 
-        // If response is JSON data (e.g. from API or Mock)
-        if (typeof response.data === 'object' && response.data !== null && Array.isArray(response.data.data)) {
-            const results = response.data.data.map((item, index) => ({
-                product_name: item.product_name || 'สินค้าพรีออเดอร์',
-                queue_position: item.queue_position || (index + 1),
-                queue_status: item.queue_status || 'Processing',
-                estimated_wait_time: item.estimated_wait_time || `ประมาณ ${(index + 1) * 2} นาที`,
-                notes: item.notes || `อ่านข้อมูลสแกนตรงจากโครงสร้างเว็บต้นทาง (${TARGET_BASE_URL}) สำเร็จ`,
-                buyer_notes: item.buyer_notes || item.product_name,
-                purchase_time: item.purchase_time || new Date().toISOString(),
-                username: item.username || searchedUsername
-            }));
-            if (results.length > 0) {
-                broadcastLog(searchedUsername, 'success', `[Cheerio Scraper] อ่านข้อมูลสำเร็จ! พบรายการพรีออเดอร์ของ "${searchedUsername}" จำนวน ${results.length} รายการ`);
-                return results;
-            }
-        }
-
-        // If response is HTML page content, parse DOM with Cheerio
-        if (typeof response.data === 'string') {
-            const isLogged = response.data.includes('จัดการหลังบ้าน') || response.data.includes('จัดการออเดอร์') || response.data.includes('ประวัติ / บันทึกการทำรายการ') || (!response.data.includes('signin') && !response.data.includes('ไม่พบหน้านี้') && !response.data.includes('Login'));
-            if (!isLocalHost && !isLogged) {
-                return { needsLogin: true };
+            if (isLocalHost) {
+                const token = await getSystemBotToken();
+                headers['Authorization'] = `Bearer ${token}`;
+                headers['Cookie'] = `session_id=${token}`;
+            } else if (cookies) {
+                headers['Cookie'] = cookies;
             }
 
-            const $ = cheerio.load(response.data);
-            const results = [];
-
-            // Selector strategies for various HTML/CSS designs (Tables, Cards, List items)
-            const rows = $('table tbody tr, tr, .table-row, div[role="row"], .order-card');
-
-            rows.each((index, el) => {
-                // Skip header row
-                if ($(el).find('th').length > 0) return;
-
-                const cells = $(el).find('td, div.cell, .table-col');
-                if (cells.length < 5) return;
-
-                // 1. Product / สินค้า (Col 2, index 1)
-                const productCell = $(cells[1]);
-                const mainName = productCell.find('h1').first().text().trim();
-                const subDetails = productCell.find('p').first().text().trim();
-                const fullProductText = productCell.text().replace(/\s+/g, ' ').trim();
-
-                let resolvedProductName = '';
-                let resolvedBuyerNotes = '';
-
-                if (mainName && subDetails) {
-                    resolvedProductName = `${mainName} ${subDetails}`;
-                    resolvedBuyerNotes = subDetails;
-                } else if (mainName) {
-                    resolvedProductName = mainName;
-                    resolvedBuyerNotes = mainName;
-                } else {
-                    resolvedProductName = fullProductText;
-                    resolvedBuyerNotes = fullProductText;
-                }
-
-                // 2. User / ผู้ใช้ (Col 3, index 2)
-                const userCell = $(cells[2]);
-                const userH1 = userCell.find('h1');
-                let parsedUser = '';
-                if (userH1.length > 0) {
-                    parsedUser = userH1.first().text().trim();
-                } else {
-                    const spans = userCell.find('span');
-                    if (spans.length > 0) {
-                        parsedUser = $(spans[spans.length - 1]).text().trim();
-                    } else {
-                        parsedUser = userCell.text().replace(/\s+/g, ' ').trim();
-                    }
-                }
-
-                // Skip row if it doesn't match the searched username
-                const userLower = parsedUser.toLowerCase();
-                const searchLower = searchedUsername.toLowerCase();
-                if (userLower !== searchLower && !userLower.includes(searchLower)) {
-                    return;
-                }
-
-                // 3. Status / สถานะ (Col 4, index 3)
-                const statusCell = $(cells[3]);
-                const statusTextRaw = statusCell.text().replace(/[\u25CF•]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
-                let parsedStatus = 'Processing';
-                if (statusTextRaw.includes('PROCESSING') || statusTextRaw.includes('กำลังดำเนินการ') || statusTextRaw.includes('กำลังทำ')) {
-                    parsedStatus = 'Processing';
-                } else if (statusTextRaw.includes('COMPLETED') || statusTextRaw.includes('สำเร็จ') || statusTextRaw.includes('เสร็จ')) {
-                    parsedStatus = 'Completed';
-                } else if (statusTextRaw.includes('PENDING') || statusTextRaw.includes('รอดำเนินการ') || statusTextRaw.includes('รอ')) {
-                    parsedStatus = 'Pending';
-                } else if (statusTextRaw.includes('FAILED') || statusTextRaw.includes('ล้มเหลว')) {
-                    parsedStatus = 'Failed';
-                } else if (statusTextRaw.includes('CANCELLED') || statusTextRaw.includes('ยกเลิก')) {
-                    parsedStatus = 'Cancelled';
-                }
-
-                // 4. Note / หมายเหตุ (Col 5, index 4)
-                const noteCell = $(cells[4]);
-                const parsedNote = noteCell.text().replace(/\s+/g, ' ').trim();
-                const resolvedNotes = parsedNote !== '-' ? parsedNote : 'แกะโครงสร้าง DOM (HTML/CSS) จากเว็บต้นทางด้วย Cheerio Engine สำเร็จ';
-
-                // 5. Created At / สร้างเมื่อ (Col 6, index 5)
-                const createdAtCell = $(cells[5]);
-                const parsedCreatedAt = createdAtCell.text().replace(/\s+/g, ' ').trim();
-                const purchaseTime = parseThaiDate(parsedCreatedAt);
-
-                const queuePos = results.length + 1;
-                const waitMinutes = queuePos * 2;
-                const purchaseTimeDate = new Date(purchaseTime);
-                const waitTimeTarget = new Date(purchaseTimeDate.getTime() + waitMinutes * 60 * 1000).toISOString();
-
-                results.push({
-                    product_name: resolvedProductName,
-                    queue_position: queuePos,
-                    queue_status: parsedStatus,
-                    estimated_wait_time: `ประมาณ ${waitMinutes} นาที`,
-                    notes: resolvedNotes,
-                    buyer_notes: resolvedBuyerNotes,
-                    purchase_time: purchaseTime,
-                    wait_time_target: waitTimeTarget,
-                    username: parsedUser
-                });
+            const response = await axios.get(ordersPageUrl, {
+                headers,
+                timeout: 15000
             });
 
-            broadcastLog(searchedUsername, 'success', `[Cheerio DOM Scraper] อ่านโครงสร้าง HTML/CSS หน้าบ้านสำเร็จ! พบบอกรายการของ "${searchedUsername}" จำนวน ${results.length} รายการ`);
-            return results;
+            // If response is JSON data (e.g. from API or Mock)
+            if (typeof response.data === 'object' && response.data !== null && Array.isArray(response.data.data)) {
+                const results = response.data.data.map((item, index) => ({
+                    product_name: item.product_name || 'สินค้าพรีออเดอร์',
+                    queue_position: item.queue_position || (index + 1),
+                    queue_status: item.queue_status || 'Processing',
+                    estimated_wait_time: item.estimated_wait_time || `ประมาณ ${(index + 1) * 2} นาที`,
+                    notes: item.notes || `อ่านข้อมูลสแกนตรงจากโครงสร้างเว็บต้นทาง (${TARGET_BASE_URL}) สำเร็จ`,
+                    buyer_notes: item.buyer_notes || item.product_name,
+                    purchase_time: item.purchase_time || new Date().toISOString(),
+                    username: item.username || searchedUsername
+                }));
+                if (results.length > 0) {
+                    broadcastLog(searchedUsername, 'success', `[Cheerio Scraper] อ่านข้อมูลสำเร็จ! พบรายการพรีออเดอร์ของ "${searchedUsername}" จำนวน ${results.length} รายการ`);
+                    return results;
+                }
+                return [];
+            }
+
+            // If response is HTML page content, parse DOM with Cheerio
+            if (typeof response.data === 'string') {
+                const isLogged = response.data.includes('จัดการหลังบ้าน') || response.data.includes('จัดการออเดอร์') || response.data.includes('ประวัติ / บันทึกการทำรายการ') || (!response.data.includes('signin') && !response.data.includes('ไม่พบหน้านี้') && !response.data.includes('Login'));
+                if (!isLocalHost && !isLogged) {
+                    return { needsLogin: true };
+                }
+
+                const $ = cheerio.load(response.data);
+                const pageResults = [];
+
+                // Selector strategies for various HTML/CSS designs (Tables, Cards, List items)
+                const rows = $('table tbody tr, tr, .table-row, div[role="row"], .order-card');
+                let validRowsCount = 0;
+
+                rows.each((index, el) => {
+                    // Skip header row
+                    if ($(el).find('th').length > 0) return;
+                    validRowsCount++;
+
+                    const cells = $(el).find('td, div.cell, .table-col');
+                    if (cells.length < 5) return;
+
+                    // 1. Product / สินค้า (Col 2, index 1)
+                    const productCell = $(cells[1]);
+                    const mainName = productCell.find('h1').first().text().trim();
+                    const subDetails = productCell.find('p').first().text().trim();
+                    const fullProductText = productCell.text().replace(/\s+/g, ' ').trim();
+
+                    let resolvedProductName = '';
+                    let resolvedBuyerNotes = '';
+
+                    if (mainName && subDetails) {
+                        resolvedProductName = `${mainName} ${subDetails}`;
+                        resolvedBuyerNotes = subDetails;
+                    } else if (mainName) {
+                        resolvedProductName = mainName;
+                        resolvedBuyerNotes = mainName;
+                    } else {
+                        resolvedProductName = fullProductText;
+                        resolvedBuyerNotes = fullProductText;
+                    }
+
+                    // 2. User / ผู้ใช้ (Col 3, index 2)
+                    const userCell = $(cells[2]);
+                    const userH1 = userCell.find('h1');
+                    let parsedUser = '';
+                    if (userH1.length > 0) {
+                        parsedUser = userH1.first().text().trim();
+                    } else {
+                        const spans = userCell.find('span');
+                        if (spans.length > 0) {
+                            parsedUser = $(spans[spans.length - 1]).text().trim();
+                        } else {
+                            parsedUser = userCell.text().replace(/\s+/g, ' ').trim();
+                        }
+                    }
+
+                    // Skip row if it doesn't match the searched username
+                    const userLower = parsedUser.toLowerCase();
+                    const searchLower = searchedUsername.toLowerCase();
+                    if (userLower !== searchLower && !userLower.includes(searchLower)) {
+                        return;
+                    }
+
+                    // 3. Status / สถานะ (Col 4, index 3)
+                    const statusCell = $(cells[3]);
+                    const statusTextRaw = statusCell.text().replace(/[\u25CF•]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
+                    let parsedStatus = 'Processing';
+                    if (statusTextRaw.includes('PROCESSING') || statusTextRaw.includes('กำลังดำเนินการ') || statusTextRaw.includes('กำลังทำ')) {
+                        parsedStatus = 'Processing';
+                    } else if (statusTextRaw.includes('COMPLETED') || statusTextRaw.includes('สำเร็จ') || statusTextRaw.includes('เสร็จ')) {
+                        parsedStatus = 'Completed';
+                    } else if (statusTextRaw.includes('PENDING') || statusTextRaw.includes('รอดำเนินการ') || statusTextRaw.includes('รอ')) {
+                        parsedStatus = 'Pending';
+                    } else if (statusTextRaw.includes('FAILED') || statusTextRaw.includes('ล้มเหลว')) {
+                        parsedStatus = 'Failed';
+                    } else if (statusTextRaw.includes('CANCELLED') || statusTextRaw.includes('ยกเลิก')) {
+                        parsedStatus = 'Cancelled';
+                    }
+
+                    // 4. Note / หมายเหตุ (Col 5, index 4)
+                    const noteCell = $(cells[4]);
+                    const parsedNote = noteCell.text().replace(/\s+/g, ' ').trim();
+                    const resolvedNotes = parsedNote !== '-' ? parsedNote : 'แกะโครงสร้าง DOM (HTML/CSS) จากเว็บต้นทางด้วย Cheerio Engine สำเร็จ';
+
+                    // 5. Created At / สร้างเมื่อ (Col 6, index 5)
+                    const createdAtCell = $(cells[5]);
+                    const parsedCreatedAt = createdAtCell.text().replace(/\s+/g, ' ').trim();
+                    const purchaseTime = parseThaiDate(parsedCreatedAt);
+
+                    const queuePos = allResults.length + pageResults.length + 1;
+                    const waitMinutes = queuePos * 2;
+                    const purchaseTimeDate = new Date(purchaseTime);
+                    const waitTimeTarget = new Date(purchaseTimeDate.getTime() + waitMinutes * 60 * 1000).toISOString();
+
+                    pageResults.push({
+                        product_name: resolvedProductName,
+                        queue_position: queuePos,
+                        queue_status: parsedStatus,
+                        estimated_wait_time: `ประมาณ ${waitMinutes} นาที`,
+                        notes: resolvedNotes,
+                        buyer_notes: resolvedBuyerNotes,
+                        purchase_time: purchaseTime,
+                        wait_time_target: waitTimeTarget,
+                        username: parsedUser
+                    });
+                });
+
+                if (pageResults.length === 0 || isLocalHost) {
+                    hasMore = false;
+                    if (isLocalHost && pageResults.length > 0) {
+                        allResults = pageResults;
+                    }
+                } else {
+                    let newOrdersCount = 0;
+                    for (const order of pageResults) {
+                        const key = `${order.product_name}|${order.username}|${order.purchase_time}`;
+                        if (!seenKeys.has(key)) {
+                            seenKeys.add(key);
+                            allResults.push(order);
+                            newOrdersCount++;
+                        }
+                    }
+
+                    // Stop if no new orders found or target page does not have a full batch (meaning no next page)
+                    if (newOrdersCount === 0 || validRowsCount < 50) {
+                        hasMore = false;
+                    } else {
+                        pageIndex++;
+                    }
+                }
+            } else {
+                hasMore = false;
+            }
         }
-        return null;
+
+        broadcastLog(searchedUsername, 'success', `[Cheerio DOM Scraper] อ่านโครงสร้าง HTML/CSS หน้าบ้านสำเร็จ! พบบอกรายการของ "${searchedUsername}" จำนวน ${allResults.length} รายการ`);
+        return allResults;
     }
 
     try {
@@ -1783,9 +1822,26 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
         await page.setViewport({ width: 1366, height: 768 });
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
 
-        // Go to Target Login
         const isLocalHost = TARGET_BASE_URL.includes('localhost') || TARGET_BASE_URL.includes('127.0.0.1');
-        if (!isLocalHost) {
+        let allScrapedOrders = [];
+
+        if (isLocalHost) {
+            await browser.close();
+            browser = null; // Prevent duplicate close in catch/finally
+
+            const mockOrdersUrl = `http://localhost:${PORT}/api/target-mock/orders?username=${encodeURIComponent(searchedUsername)}`;
+            const response = await axios.get(mockOrdersUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+            });
+            if (response.data && response.data.success && Array.isArray(response.data.data)) {
+                allScrapedOrders = response.data.data.map(item => ({
+                    ...item,
+                    raw_created_at: item.purchase_time
+                }));
+            }
+        } else {
             await page.goto(`${TARGET_BASE_URL}/auth/signin`, { waitUntil: 'networkidle2', timeout: 20000 }).catch(() => {});
             
             // Fill credentials if login form present
@@ -1803,105 +1859,136 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                 }
             }
 
-            // Navigate to Manager Orders for searched username
-            const targetOrdersUrl = `${TARGET_BASE_URL}/manager/orders?p={"pageIndex":0,"pageSize":200}&q=${encodeURIComponent(searchedUsername)}`;
-            await page.goto(targetOrdersUrl, { waitUntil: 'networkidle2', timeout: 25000 });
+            let pageIndex = 0;
+            let hasMore = true;
+            const seenKeys = new Set();
+            const maxPages = 15;
 
-            // Wait for table rows to render
-            await page.waitForSelector('table tbody tr, .order-card', { timeout: 10000 }).catch(() => {});
+            while (hasMore && pageIndex < maxPages) {
+                const pParam = JSON.stringify({ pageIndex: pageIndex, pageSize: 50 });
+                const targetOrdersUrl = `${TARGET_BASE_URL}/manager/orders?p=${encodeURIComponent(pParam)}&q=${encodeURIComponent(searchedUsername)}`;
 
-            // Extract table rows directly from DOM
-            const scrapedOrders = await page.evaluate((user) => {
-                const rows = Array.from(document.querySelectorAll('table tbody tr, tr, .table-row, div[role="row"], .order-card'));
-                const results = [];
+                logger.info(`[Puppeteer Live] Navigating to page ${pageIndex} URL: ${targetOrdersUrl}`);
+                await page.goto(targetOrdersUrl, { waitUntil: 'networkidle2', timeout: 25000 });
 
-                rows.forEach((row) => {
-                    // Skip header row
-                    if (row.querySelector('th')) return;
+                // Wait for table rows to render
+                await page.waitForSelector('table tbody tr, .order-card', { timeout: 10000 }).catch(() => {});
 
-                    const cells = Array.from(row.querySelectorAll('td, div.cell, .table-col'));
-                    if (cells.length < 5) return;
+                // Extract table rows directly from DOM
+                const pageOrdersResult = await page.evaluate((user) => {
+                    const rows = Array.from(document.querySelectorAll('table tbody tr, tr, .table-row, div[role="row"], .order-card'));
+                    const results = [];
+                    let validRowsCount = 0;
 
-                    // 1. Extract Product details
-                    const productCell = cells[1];
-                    const mainNameEl = productCell.querySelector('h1');
-                    const subDetailsEl = productCell.querySelector('p');
-                    const mainName = mainNameEl ? mainNameEl.innerText.trim() : '';
-                    const subDetails = subDetailsEl ? subDetailsEl.innerText.trim() : '';
-                    const fullProductText = productCell.innerText.replace(/\s+/g, ' ').trim();
+                    rows.forEach((row) => {
+                        // Skip header row
+                        if (row.querySelector('th')) return;
+                        validRowsCount++;
 
-                    let resolvedProductName = '';
-                    let resolvedBuyerNotes = '';
+                        const cells = Array.from(row.querySelectorAll('td, div.cell, .table-col'));
+                        if (cells.length < 5) return;
 
-                    if (mainName && subDetails) {
-                        resolvedProductName = `${mainName} ${subDetails}`;
-                        resolvedBuyerNotes = subDetails;
-                    } else if (mainName) {
-                        resolvedProductName = mainName;
-                        resolvedBuyerNotes = mainName;
-                    } else {
-                        resolvedProductName = fullProductText;
-                        resolvedBuyerNotes = fullProductText;
-                    }
+                        // 1. Extract Product details
+                        const productCell = cells[1];
+                        const mainNameEl = productCell.querySelector('h1');
+                        const subDetailsEl = productCell.querySelector('p');
+                        const mainName = mainNameEl ? mainNameEl.innerText.trim() : '';
+                        const subDetails = subDetailsEl ? subDetailsEl.innerText.trim() : '';
+                        const fullProductText = productCell.innerText.replace(/\s+/g, ' ').trim();
 
-                    // 2. Extract User
-                    const userCell = cells[2];
-                    const userH1El = userCell.querySelector('h1');
-                    let parsedUser = '';
-                    if (userH1El) {
-                        parsedUser = userH1El.innerText.trim();
-                    } else {
-                        const spans = Array.from(userCell.querySelectorAll('span'));
-                        if (spans.length > 0) {
-                            parsedUser = spans[spans.length - 1].innerText.trim();
+                        let resolvedProductName = '';
+                        let resolvedBuyerNotes = '';
+
+                        if (mainName && subDetails) {
+                            resolvedProductName = `${mainName} ${subDetails}`;
+                            resolvedBuyerNotes = subDetails;
+                        } else if (mainName) {
+                            resolvedProductName = mainName;
+                            resolvedBuyerNotes = mainName;
                         } else {
-                            parsedUser = userCell.innerText.replace(/\s+/g, ' ').trim();
+                            resolvedProductName = fullProductText;
+                            resolvedBuyerNotes = fullProductText;
+                        }
+
+                        // 2. Extract User
+                        const userCell = cells[2];
+                        const userH1El = userCell.querySelector('h1');
+                        let parsedUser = '';
+                        if (userH1El) {
+                            parsedUser = userH1El.innerText.trim();
+                        } else {
+                            const spans = Array.from(userCell.querySelectorAll('span'));
+                            if (spans.length > 0) {
+                                parsedUser = spans[spans.length - 1].innerText.trim();
+                            } else {
+                                parsedUser = userCell.innerText.replace(/\s+/g, ' ').trim();
+                            }
+                        }
+
+                        // Skip row if it doesn't match the searched username
+                        const userLower = parsedUser.toLowerCase();
+                        const searchLower = user.toLowerCase();
+                        if (userLower !== searchLower && !userLower.includes(searchLower)) {
+                            return;
+                        }
+
+                        // 3. Extract Status
+                        const statusCell = cells[3];
+                        const statusTextRaw = statusCell.innerText.replace(/[\u25CF•]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
+                        let parsedStatus = 'Processing';
+                        if (statusTextRaw.includes('PROCESSING') || statusTextRaw.includes('กำลังดำเนินการ') || statusTextRaw.includes('กำลังทำ')) {
+                            parsedStatus = 'Processing';
+                        } else if (statusTextRaw.includes('COMPLETED') || statusTextRaw.includes('สำเร็จ') || statusTextRaw.includes('เสร็จ')) {
+                            parsedStatus = 'Completed';
+                        } else if (statusTextRaw.includes('PENDING') || statusTextRaw.includes('รอดำเนินการ') || statusTextRaw.includes('รอ')) {
+                            parsedStatus = 'Pending';
+                        } else if (statusTextRaw.includes('FAILED') || statusTextRaw.includes('ล้มเหลว')) {
+                            parsedStatus = 'Failed';
+                        } else if (statusTextRaw.includes('CANCELLED') || statusTextRaw.includes('ยกเลิก')) {
+                            parsedStatus = 'Cancelled';
+                        }
+
+                        // 4. Extract Note
+                        const noteCell = cells[4];
+                        const parsedNote = noteCell.innerText.replace(/\s+/g, ' ').trim();
+
+                        // 5. Extract Created At
+                        const createdAtCell = cells[5];
+                        const parsedCreatedAt = createdAtCell.innerText.replace(/\s+/g, ' ').trim();
+
+                        results.push({
+                            product_name: resolvedProductName,
+                            queue_status: parsedStatus,
+                            notes: parsedNote,
+                            buyer_notes: resolvedBuyerNotes,
+                            raw_created_at: parsedCreatedAt,
+                            username: parsedUser
+                        });
+                    });
+
+                    return { results, validRowsCount };
+                }, searchedUsername);
+
+                if (!pageOrdersResult || !pageOrdersResult.results || pageOrdersResult.results.length === 0) {
+                    hasMore = false;
+                } else {
+                    let newOrdersCount = 0;
+                    for (const order of pageOrdersResult.results) {
+                        const key = `${order.product_name}|${order.username}|${order.raw_created_at}`;
+                        if (!seenKeys.has(key)) {
+                            seenKeys.add(key);
+                            allScrapedOrders.push(order);
+                            newOrdersCount++;
                         }
                     }
 
-                    // Skip row if it doesn't match the searched username
-                    const userLower = parsedUser.toLowerCase();
-                    const searchLower = user.toLowerCase();
-                    if (userLower !== searchLower && !userLower.includes(searchLower)) {
-                        return;
+                    if (newOrdersCount === 0 || pageOrdersResult.validRowsCount < 50) {
+                        hasMore = false;
+                    } else {
+                        pageIndex++;
                     }
-
-                    // 3. Extract Status
-                    const statusCell = cells[3];
-                    const statusTextRaw = statusCell.innerText.replace(/[\u25CF•]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
-                    let parsedStatus = 'Processing';
-                    if (statusTextRaw.includes('PROCESSING') || statusTextRaw.includes('กำลังดำเนินการ') || statusTextRaw.includes('กำลังทำ')) {
-                        parsedStatus = 'Processing';
-                    } else if (statusTextRaw.includes('COMPLETED') || statusTextRaw.includes('สำเร็จ') || statusTextRaw.includes('เสร็จ')) {
-                        parsedStatus = 'Completed';
-                    } else if (statusTextRaw.includes('PENDING') || statusTextRaw.includes('รอดำเนินการ') || statusTextRaw.includes('รอ')) {
-                        parsedStatus = 'Pending';
-                    } else if (statusTextRaw.includes('FAILED') || statusTextRaw.includes('ล้มเหลว')) {
-                        parsedStatus = 'Failed';
-                    } else if (statusTextRaw.includes('CANCELLED') || statusTextRaw.includes('ยกเลิก')) {
-                        parsedStatus = 'Cancelled';
-                    }
-
-                    // 4. Extract Note
-                    const noteCell = cells[4];
-                    const parsedNote = noteCell.innerText.replace(/\s+/g, ' ').trim();
-
-                    // 5. Extract Created At
-                    const createdAtCell = cells[5];
-                    const parsedCreatedAt = createdAtCell.innerText.replace(/\s+/g, ' ').trim();
-
-                    results.push({
-                        product_name: resolvedProductName,
-                        queue_status: parsedStatus,
-                        notes: parsedNote,
-                        buyer_notes: resolvedBuyerNotes,
-                        raw_created_at: parsedCreatedAt,
-                        username: parsedUser
-                    });
-                });
-
-                return results;
-            }, searchedUsername);
+                }
+            }
 
             const cookies = await page.cookies();
             cachedTargetCookies = cookies.map(c => `${c.name}=${c.value}`).join('; ');
@@ -1909,29 +1996,31 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
             logger.info(`[Puppeteer Live] Session cookies cached and saved to DB successfully.`);
 
             await browser.close();
-            if (Array.isArray(scrapedOrders)) {
-                const finalOrders = scrapedOrders.map((order, index) => {
-                    const purchaseTime = parseThaiDate(order.raw_created_at);
-                    const queuePos = index + 1;
-                    const waitMinutes = queuePos * 2;
-                    const purchaseTimeDate = new Date(purchaseTime);
-                    const waitTimeTarget = new Date(purchaseTimeDate.getTime() + waitMinutes * 60 * 1000).toISOString();
-                    
-                    const resolvedNotes = order.notes !== '-' ? order.notes : 'สแกนสดจากเว็บต้นทาง (thewestern.rdcw.xyz) ด้วย Puppeteer Headless สำเร็จ';
-                    
-                    delete order.raw_created_at;
-                    return {
-                        ...order,
-                        queue_position: queuePos,
-                        estimated_wait_time: `ประมาณ ${waitMinutes} นาที`,
-                        notes: resolvedNotes,
-                        purchase_time: purchaseTime,
-                        wait_time_target: waitTimeTarget
-                    };
-                });
-                broadcastLog(searchedUsername, 'success', `[Puppeteer Live] สแกนสดสำเร็จ! พบบอกรายการพรีออเดอร์ของ "${searchedUsername}" ทั้งหมด ${finalOrders.length} รายการจากหน้าเว็บต้นทางจริง`);
-                return finalOrders;
-            }
+            browser = null;
+        }
+
+        if (Array.isArray(allScrapedOrders)) {
+            const finalOrders = allScrapedOrders.map((order, index) => {
+                const purchaseTime = parseThaiDate(order.raw_created_at);
+                const queuePos = index + 1;
+                const waitMinutes = queuePos * 2;
+                const purchaseTimeDate = new Date(purchaseTime);
+                const waitTimeTarget = new Date(purchaseTimeDate.getTime() + waitMinutes * 60 * 1000).toISOString();
+                
+                const resolvedNotes = order.notes !== '-' ? order.notes : 'สแกนสดจากเว็บต้นทาง (thewestern.rdcw.xyz) ด้วย Puppeteer Headless สำเร็จ';
+                
+                delete order.raw_created_at;
+                return {
+                    ...order,
+                    queue_position: queuePos,
+                    estimated_wait_time: `ประมาณ ${waitMinutes} นาที`,
+                    notes: resolvedNotes,
+                    purchase_time: purchaseTime,
+                    wait_time_target: waitTimeTarget
+                };
+            });
+            broadcastLog(searchedUsername, 'success', `[Puppeteer Live] สแกนสดสำเร็จ! พบบอกรายการพรีออเดอร์ของ "${searchedUsername}" ทั้งหมด ${finalOrders.length} รายการจากหน้าเว็บต้นทางจริง`);
+            return finalOrders;
         }
     } catch (puppeteerErr) {
         logger.warn(`[Puppeteer Live Error]: ${puppeteerErr.message}. Falling back to Cheerio Engine...`);
