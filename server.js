@@ -1321,30 +1321,9 @@ app.get('/api/target-mock/orders', (req, res) => {
     const userKey = searchedUsername.toLowerCase();
     let ordersForUser = mockOrderDatabase[userKey];
 
-    // Fallback: If user is not in exact mock dict, generate realistic real-time preorders dynamically
-    if (!ordersForUser || ordersForUser.length === 0) {
-        ordersForUser = [
-            {
-                product_name: 'HBO MAX [พรีออเดอร์] MAX 30 DAYS [PREMIUM]',
-                queue_position: 1,
-                queue_status: 'Processing',
-                estimated_wait_time: 'ประมาณ 2 นาที',
-                notes: `ดึงและสแกนพบข้อมูลพรีออเดอร์ HBO MAX ของบัญชี ${searchedUsername} จากระบบเว็บต้นทาง (thewestern.rdcw.xyz) เรียบร้อยแล้ว`,
-                buyer_notes: 'MAX 30 DAYS [PREMIUM]',
-                purchase_time: new Date().toISOString(),
-                wait_time_target: waitTarget
-            },
-            {
-                product_name: 'MONOMAX [พรีออเดอร์] ENTERTAINMENT 30 DAYS',
-                queue_position: 2,
-                queue_status: 'Processing',
-                estimated_wait_time: 'ประมาณ 4 นาที',
-                notes: `ดึงและสแกนพบข้อมูลพรีออเดอร์ MONOMAX ของบัญชี ${searchedUsername} จากระบบเว็บต้นทาง (thewestern.rdcw.xyz) เรียบร้อยแล้ว`,
-                buyer_notes: 'ENTERTAINMENT 30 DAYS',
-                purchase_time: new Date().toISOString(),
-                wait_time_target: waitTarget
-            }
-        ];
+    // Fallback: If user is not in exact mock dict, return empty list instead of generating random preorders
+    if (!ordersForUser) {
+        ordersForUser = [];
     }
 
     return res.json({
@@ -1567,10 +1546,9 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
         const maxPages = 15; // Safeguard to prevent infinite loops
 
         while (hasMore && pageIndex < maxPages) {
-            const pParam = JSON.stringify({ pageIndex: pageIndex, pageSize: 50 });
             const ordersPageUrl = isLocalHost
                 ? `http://localhost:${PORT}/api/target-mock/orders?username=${encodeURIComponent(searchedUsername)}`
-                : `${TARGET_BASE_URL}/manager/orders?p=${encodeURIComponent(pParam)}&q=${encodeURIComponent(searchedUsername)}`;
+                : `${TARGET_BASE_URL}/manager/orders?page=${pageIndex + 1}&ps=100&q=${encodeURIComponent(searchedUsername)}`;
 
             logger.info(`[Cheerio Scraper] Requesting Page ${pageIndex} URL: ${ordersPageUrl}`);
 
@@ -1630,10 +1608,37 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
                     if ($(el).find('th').length > 0) return;
                     pageRowsCount++;
 
+                    // Extract unique order ID from tr id, checkbox, input value, or edit link
+                    let orderId = '';
+                    const trId = $(el).attr('id');
+                    if (trId) {
+                        orderId = trId;
+                    }
+                    if (!orderId) {
+                        const btn = $(el).find('button[role="checkbox"]');
+                        if (btn.length > 0 && btn.attr('id')) {
+                            orderId = btn.attr('id');
+                        }
+                    }
+                    if (!orderId) {
+                        const input = $(el).find('input[type="checkbox"]');
+                        if (input.length > 0 && input.attr('value')) {
+                            orderId = input.attr('value');
+                        }
+                    }
+                    if (!orderId) {
+                        const editLink = $(el).find('a');
+                        editLink.each((idx, linkEl) => {
+                            const href = $(linkEl).attr('href') || '';
+                            const match = href.match(/\/manager\/orders\/([a-zA-Z0-9]+)/);
+                            if (match) orderId = match[1];
+                        });
+                    }
+
                     // Generate raw row key to detect duplicate pages
-                    const rawRowText = $(el).text().trim();
-                    if (!seenRowKeys.has(rawRowText)) {
-                        seenRowKeys.add(rawRowText);
+                    const rowKey = orderId || $(el).text().trim();
+                    if (!seenRowKeys.has(rowKey)) {
+                        seenRowKeys.add(rowKey);
                         newRowsCount++;
                     }
 
@@ -1714,6 +1719,7 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
                     const waitTimeTarget = new Date(purchaseTimeDate.getTime() + waitMinutes * 60 * 1000).toISOString();
 
                     pageResults.push({
+                        order_id: orderId,
                         product_name: resolvedProductName,
                         queue_position: queuePos,
                         queue_status: parsedStatus,
@@ -1733,7 +1739,7 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
                     }
                 } else {
                     for (const order of pageResults) {
-                        const key = `${order.product_name}|${order.username}|${order.purchase_time}`;
+                        const key = order.order_id || `${order.product_name}|${order.username}|${order.purchase_time}`;
                         if (!seenOrderKeys.has(key)) {
                             seenOrderKeys.add(key);
                             allResults.push(order);
@@ -1870,11 +1876,10 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
             let hasMore = true;
             const seenOrderKeys = new Set();
             const seenRowKeys = new Set();
-            const maxPages = 15;
+            const maxPages = 15; // Safeguard to prevent infinite loops
 
             while (hasMore && pageIndex < maxPages) {
-                const pParam = JSON.stringify({ pageIndex: pageIndex, pageSize: 50 });
-                const targetOrdersUrl = `${TARGET_BASE_URL}/manager/orders?p=${encodeURIComponent(pParam)}&q=${encodeURIComponent(searchedUsername)}`;
+                const targetOrdersUrl = `${TARGET_BASE_URL}/manager/orders?page=${pageIndex + 1}&ps=100&q=${encodeURIComponent(searchedUsername)}`;
 
                 logger.info(`[Puppeteer Live] Navigating to page ${pageIndex} URL: ${targetOrdersUrl}`);
                 await page.goto(targetOrdersUrl, { waitUntil: 'networkidle2', timeout: 25000 });
@@ -1963,9 +1968,31 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
 
                         // 5. Extract Created At
                         const createdAtCell = cells[5];
-                        const parsedCreatedAt = createdAtCell.innerText.replace(/\s+/g, ' ').trim();
+                        const parsedCreatedAt = createdAtCell ? createdAtCell.innerText.replace(/\s+/g, ' ').trim() : new Date().toISOString();
+
+                        // Extract unique order ID from tr id, checkbox, input value, or edit link
+                        let orderId = '';
+                        if (row.id) {
+                            orderId = row.id;
+                        }
+                        if (!orderId) {
+                            const chk = row.querySelector('button[role="checkbox"]');
+                            if (chk && chk.id) orderId = chk.id;
+                        }
+                        if (!orderId) {
+                            const chkInput = row.querySelector('input[type="checkbox"]');
+                            if (chkInput && chkInput.value) orderId = chkInput.value;
+                        }
+                        if (!orderId) {
+                            const editLink = row.querySelector('a[href*="/manager/orders/"]');
+                            if (editLink) {
+                                const match = editLink.href.match(/\/manager\/orders\/([a-zA-Z0-9]+)/);
+                                if (match) orderId = match[1];
+                            }
+                        }
 
                         results.push({
+                            order_id: orderId,
                             product_name: resolvedProductName,
                             queue_status: parsedStatus,
                             notes: parsedNote,
@@ -1973,7 +2000,7 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                             raw_created_at: parsedCreatedAt,
                             username: parsedUser
                         });
-                        rowTexts.push(row.innerText.replace(/\s+/g, ' ').trim());
+                        rowTexts.push(orderId || row.innerText.replace(/\s+/g, ' ').trim());
                     });
 
                     return { results, pageRowsCount, rowTexts };
@@ -1983,15 +2010,16 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                     hasMore = false;
                 } else {
                     let newRowsCount = 0;
-                    pageOrdersResult.rowTexts.forEach(text => {
-                        if (!seenRowKeys.has(text)) {
-                            seenRowKeys.add(text);
+                    pageOrdersResult.results.forEach(order => {
+                        const rowKey = order.order_id || `${order.product_name}|${order.username}|${order.raw_created_at}`;
+                        if (!seenRowKeys.has(rowKey)) {
+                            seenRowKeys.add(rowKey);
                             newRowsCount++;
                         }
                     });
 
                     pageOrdersResult.results.forEach(order => {
-                        const key = `${order.product_name}|${order.username}|${order.raw_created_at}`;
+                        const key = order.order_id || `${order.product_name}|${order.username}|${order.raw_created_at}`;
                         if (!seenOrderKeys.has(key)) {
                             seenOrderKeys.add(key);
                             allScrapedOrders.push(order);
@@ -2100,7 +2128,6 @@ async function fetchTargetOrdersForUser(searchedUsername) {
             // Sort active orders by purchase time ASC (oldest first) so queue_position is assigned correctly
             activeOrders.sort((a, b) => new Date(a.purchase_time || now) - new Date(b.purchase_time || now));
 
-            // Clear old cached orders for searched username so fresh dataset replaces it cleanly
             db.run("DELETE FROM orders WHERE LOWER(username) = LOWER(?)", [searchedUsername], (deleteErr) => {
                 activeOrders.forEach((remoteOrder, index) => {
                     const resolved = resolveAppProductDetails(remoteOrder.product_name, remoteOrder.product_image);
@@ -2114,7 +2141,7 @@ async function fetchTargetOrdersForUser(searchedUsername) {
                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                         [
                             remoteOrder.username || searchedUsername,
-                            resolved.product_name,
+                            remoteOrder.product_name || resolved.product_name,
                             resolved.product_image,
                             queuePos,
                             remoteOrder.queue_status || 'Processing',
