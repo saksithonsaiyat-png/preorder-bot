@@ -245,42 +245,42 @@
                         </div>
 
                         <!-- Columns Row (Queue Status Metrics) -->
-                        <div class="flex items-center justify-between border border-zinc-150 dark:border-zinc-800/80 rounded-2xl py-6 px-4 md:px-8 bg-zinc-50/15 dark:bg-zinc-950/20">
+                        <div class="flex items-center justify-between border border-blue-300/80 dark:border-zinc-800/80 rounded-2xl py-6 px-4 md:px-8 bg-blue-50/30 dark:bg-zinc-950/20">
                             <!-- Col 1 -->
                             <div class="flex-1 flex flex-col items-center text-center">
                                 <span class="border rounded-full px-3 py-1 text-xs font-bold"
-                                      :class="darkMode ? 'border-zinc-800 bg-zinc-900/30 text-zinc-400' : 'border-slate-200 bg-white text-slate-600'">
+                                      :class="darkMode ? 'border-zinc-800 bg-zinc-900/30 text-zinc-400' : 'border-blue-200 bg-white text-black'">
                                     คิวปัจจุบัน
                                 </span>
-                                <span class="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-white mt-3"
+                                <span class="text-2xl sm:text-3xl font-extrabold text-black dark:text-white mt-3"
                                       x-text="order.queue_position > 0 ? '#' + order.queue_position : '-'"></span>
                             </div>
 
                             <!-- Vertical Divider -->
-                            <div class="w-[1px] h-12 bg-zinc-200 dark:bg-zinc-800 mx-2"></div>
+                            <div class="w-[1px] h-12 bg-blue-200 dark:bg-zinc-800 mx-2"></div>
 
                             <!-- Col 2 -->
                             <div class="flex-1 flex flex-col items-center text-center">
                                 <span class="border rounded-full px-3 py-1 text-xs font-bold"
-                                      :class="darkMode ? 'border-zinc-800 bg-zinc-900/30 text-zinc-400' : 'border-slate-200 bg-white text-slate-600'">
+                                      :class="darkMode ? 'border-zinc-800 bg-zinc-900/30 text-zinc-400' : 'border-blue-200 bg-white text-black'">
                                     คิวที่ต้องรอ
                                 </span>
-                                <span class="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-white mt-3"
+                                <span class="text-2xl sm:text-3xl font-extrabold text-black dark:text-white mt-3"
                                       x-text="order.queue_position > 1 ? order.queue_position - 1 : 0"></span>
                             </div>
 
                             <!-- Vertical Divider -->
-                            <div class="w-[1px] h-12 bg-zinc-200 dark:bg-zinc-800 mx-2"></div>
+                            <div class="w-[1px] h-12 bg-blue-200 dark:bg-zinc-800 mx-2"></div>
 
                             <!-- Col 3 -->
                             <div class="flex-1 flex flex-col items-center text-center min-w-0">
                                 <span class="border rounded-full px-3 py-1 text-xs font-bold"
-                                      :class="darkMode ? 'border-zinc-800 bg-zinc-900/30 text-zinc-400' : 'border-slate-200 bg-white text-slate-600'">
+                                      :class="darkMode ? 'border-zinc-800 bg-zinc-900/30 text-zinc-400' : 'border-blue-200 bg-white text-black'">
                                     เวลารอคิว
                                 </span>
-                                <span class="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-white mt-3 truncate max-w-full"
+                                <span class="text-2xl sm:text-3xl font-extrabold text-black dark:text-white mt-3 truncate max-w-full"
                                       x-text="getCountdownLabel(order)"></span>
-                                <span class="text-[9px] font-semibold text-zinc-400 dark:text-zinc-550 mt-1 max-w-full leading-tight block">
+                                <span class="text-[9px] font-semibold text-black dark:text-zinc-550 mt-1 max-w-full leading-tight block">
                                     *ระยะเวลาเป็นการประมาณการโดยระบบอัตโนมัติ อาจคลาดเคลื่อนจากเวลาจริง
                                 </span>
                             </div>
