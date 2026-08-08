@@ -235,10 +235,10 @@
                                  :class="darkMode ? 'border-zinc-800' : 'border-slate-200'">
                             <div>
                                 <!-- Main Title -->
-                                <h3 class="text-base sm:text-lg font-extrabold leading-tight text-zinc-900 dark:text-white"
+                                <h3 class="text-base sm:text-lg font-extrabold leading-tight text-slate-900 dark:text-white"
                                     x-text="formatProductName(order.product_name).main"></h3>
                                 <!-- Sub Title (Package Details) -->
-                                <p class="text-xs sm:text-sm font-semibold tracking-wider uppercase text-zinc-400 dark:text-zinc-550 mt-1"
+                                <p class="text-xs sm:text-sm font-semibold tracking-wider uppercase text-slate-500 dark:text-zinc-550 mt-1"
                                    x-show="formatProductName(order.product_name).sub"
                                    x-text="formatProductName(order.product_name).sub"></p>
                             </div>
@@ -384,7 +384,7 @@
                                             <h5 class="text-xs font-bold"
                                                 :class="order.queue_status === 'Completed' ? 'text-emerald-500 font-bold' : 
                                                         (order.queue_status === 'Failed' ? 'text-rose-500 font-bold' : 
-                                                        (order.queue_status === 'Cancelled' ? 'text-zinc-500 font-bold' : 'text-zinc-400 dark:text-zinc-600'))"
+                                                        (order.queue_status === 'Cancelled' ? 'text-zinc-500 font-bold' : (darkMode ? 'text-zinc-600' : 'text-slate-500')))"
                                                 x-text="order.queue_status === 'Completed' ? 'จัดส่งสำเร็จ' : 
                                                        (order.queue_status === 'Failed' ? 'จัดส่งไม่สำเร็จ' : 
                                                        (order.queue_status === 'Cancelled' ? 'ยกเลิกรายการ' : 'รอส่งมอบสินค้า'))">
@@ -402,7 +402,7 @@
                             <!-- Remarks Note -->
                             <div class="border-t pt-4" :class="darkMode ? 'border-zinc-800/80' : 'border-slate-100'">
                                 <div class="rounded-xl p-4 border text-xs flex gap-3 items-start"
-                                     :class="darkMode ? 'bg-zinc-950/40 border-zinc-800/85 text-zinc-300' : 'bg-slate-50 border-slate-150 text-slate-650'">
+                                     :class="darkMode ? 'bg-zinc-950/40 border-zinc-800/85 text-zinc-300' : 'bg-slate-50 border-slate-200 text-slate-700'">
                                     <div class="p-1.5 rounded-lg shrink-0" :class="darkMode ? 'bg-zinc-900 text-zinc-400' : 'bg-white text-slate-500 border border-slate-200'">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
