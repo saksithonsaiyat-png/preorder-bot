@@ -157,19 +157,7 @@
                             กำลังค้นหา... (<span x-text="cooldown"></span> วินาที)
                         </span>
                         <span x-show="!loading && cooldown > 0" class="flex items-center gap-2 justify-center">
-                            ตรวจสอบอีกครั้ง (<span x-text="cooldown"></span> วินาที)
-                        </span>
-                    </button>
-                </div>
-            </form>
-        </div>
-
-        <!-- Result Container -->
-        <div x-show="searched" x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
-            class="w-full max-w-3xl mx-auto mt-8 space-y-6">
-
-            <!-- Title: Found Items -->
+                            ตรวจส�            <!-- Title: Found Items -->
             <div x-show="queueResults && queueResults.length > 0" class="flex items-center justify-between border-b pb-3 mb-4" :class="darkMode ? 'border-zinc-800/80' : 'border-slate-200'">
                 <h2 class="text-xl font-bold tracking-tight" :class="darkMode ? 'text-white' : 'text-slate-900'">ค้นพบทั้งหมด <span class="text-primary" x-text="filteredQueueResults.length"></span> รายการ</h2>
             </div>
@@ -188,7 +176,7 @@
                         <button @click="toggleCategory(cat)"
                                 class="border border-dashed rounded-xl px-3 py-1.5 text-xs font-semibold transition-all duration-200 active:scale-95"
                                 :class="selectedCategory === cat
-                                        ? 'bg-[#F89696] border-[#F89696] text-white shadow-sm'
+                                        ? 'bg-rose-400 border-rose-400 text-white shadow-sm'
                                         : (darkMode ? 'border-zinc-800 bg-zinc-900/40 text-zinc-400 hover:bg-zinc-850 hover:text-zinc-350' : 'border-slate-200 bg-slate-50/50 text-slate-500 hover:bg-slate-100 hover:text-slate-700')">
                             <span x-text="cat"></span>
                         </button>
@@ -326,11 +314,9 @@
                                     ไทม์ไลน์สถานะพรีออเดอร์
                                 </h4>
                                 
-                                <div class="relative pl-6 ml-3">
+                                <div class="relative pl-6 border-l-2 ml-3 space-y-6" :class="darkMode ? 'border-zinc-800' : 'border-slate-200'">
                                     <!-- Step 1: Pending -->
-                                    <div class="relative pb-6">
-                                        <!-- Line to next step -->
-                                        <div class="absolute left-[-23px] top-3 bottom-0 w-[2px]" :class="darkMode ? 'bg-zinc-800' : 'bg-slate-200'"></div>
+                                    <div class="relative">
                                         <div class="absolute -left-[35px] top-0 w-6 h-6 rounded-full flex items-center justify-center border text-[10px]"
                                              :class="isStepActive(order.queue_status, 'Pending') ? 'bg-primary border-primary text-white shadow-sm' : (darkMode ? 'bg-zinc-950 border-zinc-800 text-zinc-600' : 'bg-white border-slate-200 text-slate-400')">
                                             <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -342,9 +328,7 @@
                                     </div>
 
                                     <!-- Step 2: Processing -->
-                                    <div class="relative pb-6">
-                                        <!-- Line to next step -->
-                                        <div class="absolute left-[-23px] top-3 bottom-0 w-[2px]" :class="darkMode ? 'bg-zinc-800' : 'bg-slate-200'"></div>
+                                    <div class="relative">
                                         <div class="absolute -left-[35px] top-0 w-6 h-6 rounded-full flex items-center justify-center border text-[10px]"
                                              :class="isStepActive(order.queue_status, 'Processing') ? 'bg-primary border-primary text-white shadow-sm' : (darkMode ? 'bg-zinc-950 border-zinc-800 text-zinc-600' : 'bg-white border-slate-200 text-slate-400')">
                                             <svg class="w-3 h-3" :class="order.queue_status === 'Processing' ? 'animate-spin' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -418,8 +402,23 @@
                     </div>
                 </template>
             </div>
+: 'ยกเลิกรายการ'">
+                                        </span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
 
-                        
+                        <!-- Team Note Remarks Section -->
+                        <div class="border-t pt-4" :class="darkMode ? 'border-zinc-800/80' : 'border-slate-100'">
+                            <div class="rounded-xl p-3.5 border text-xs" :class="darkMode ? 'bg-zinc-950/40 border-zinc-800/50 text-zinc-300' : 'bg-slate-50 border-slate-100/50 text-slate-650'">
+                                <span class="text-[10px] uppercase font-bold tracking-wider block mb-1.5" :class="darkMode ? 'text-zinc-500' : 'text-slate-400'">หมายเหตุจากทีมงาน</span>
+                                <p class="font-normal leading-relaxed" x-text="order.notes || 'ไม่มีหมายเหตุเพิ่มเติมสำหรับรายการนี้'"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
 
             <!-- Error Not Found Card -->
             <template x-if="searched && accountNotFound">
@@ -773,9 +772,6 @@
                         }
                         if (part === 'ONE D') {
                             return productName.includes('ONED') || productName.includes('ONE D');
-                        }
-                        if (part === 'MAX') {
-                            return (productName.includes('MAX') || buyerNotes.includes('MAX')) && !productName.includes('MONOMAX');
                         }
                         return productName.includes(part) || buyerNotes.includes(part);
                     });

@@ -216,15 +216,23 @@ function seedInitialData() {
     });
 
     // Seed default system settings
-    db.get("SELECT COUNT(*) as count FROM system_settings", [], (err, row) => {
-        if (err) return console.error(err.message);
-        if (row.count === 0) {
-            console.log('Seeding default system settings...');
-            const stmt = db.prepare("INSERT INTO system_settings (key, value) VALUES (?, ?)");
-            stmt.run('is_queue_active', '1');
-            stmt.run('closed_message', 'ระบบปิดปรับปรุงชั่วคราว กรุณากลับมาใหม่ภายหลัง');
-            stmt.finalize();
-        }
+    db.serialize(() => {
+        const defaultSettings = [
+            ['is_queue_active', '1'],
+            ['closed_message', 'ระบบปิดปรับปรุงชั่วคราว กรุณากลับมาใหม่ภายหลัง'],
+            ['shop_name', 'checkorder'],
+            ['hero_title', 'ตรวจสอบคิวจองสินค้าพรีออเดอร์'],
+            ['hero_subtitle', 'กรอกชื่อบัญชีที่ลงทะเบียนไว้กับเว็บต้นทาง (thewestern.rdcw.xyz) เพื่อให้บอทเข้าไปสแกนดึงออเดอร์มาแสดงผล'],
+            ['color_shop_name', '#4A7BF8'],
+            ['color_hero_title', '#4A7BF8'],
+            ['color_border', '#4A7BF8'],
+            ['color_accent', '#4A7BF8'],
+            ['announcement_text', '']
+        ];
+        
+        defaultSettings.forEach(([key, val]) => {
+            db.run("INSERT OR IGNORE INTO system_settings (key, value) VALUES (?, ?)", [key, val]);
+        });
     });
 
     // Seed customer accounts
