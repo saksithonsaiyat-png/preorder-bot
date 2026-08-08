@@ -235,10 +235,12 @@
                                  :class="darkMode ? 'border-zinc-800' : 'border-slate-200'">
                             <div>
                                 <!-- Main Title -->
-                                <h3 class="text-base sm:text-lg font-extrabold leading-tight text-slate-900 dark:text-white"
+                                <h3 class="text-base sm:text-lg font-extrabold leading-tight"
+                                    :class="darkMode ? 'text-white' : 'text-black'"
                                     x-text="formatProductName(order.product_name).main"></h3>
                                 <!-- Sub Title (Package Details) -->
-                                <p class="text-xs sm:text-sm font-semibold tracking-wider uppercase text-slate-500 dark:text-zinc-550 mt-1"
+                                <p class="text-xs sm:text-sm font-semibold tracking-wider uppercase mt-1"
+                                   :class="darkMode ? 'text-zinc-400' : 'text-slate-500'"
                                    x-show="formatProductName(order.product_name).sub"
                                    x-text="formatProductName(order.product_name).sub"></p>
                             </div>
