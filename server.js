@@ -643,7 +643,16 @@ app.get('/api/settings', (req, res) => {
             success: true,
             data: {
                 is_queue_active: settings.is_queue_active === '1',
-                closed_message: settings.closed_message || 'ระบบปิดปรับปรุงชั่วคราว'
+                closed_message: settings.closed_message || 'ระบบปิดปรับปรุงชั่วคราว',
+                shop_name: settings.shop_name || 'Checkorder',
+                hero_title: settings.hero_title || 'ตรวจสอบคิวจองสินค้าพรีออเดอร์',
+                hero_subtitle: settings.hero_subtitle || 'กรอกชื่อบัญชีที่ลงทะเบียนไว้กับเว็บต้นทาง (thewestern.rdcw.xyz) เพื่อให้บอทเข้าไปสแกนดึงออเดอร์มาแสดงผล',
+                color_shop_name: settings.color_shop_name || '#4A7BF8',
+                color_hero_title: settings.color_hero_title || '#4A7BF8',
+                color_border: settings.color_border || '#4A7BF8',
+                color_accent: settings.color_accent || '#4A7BF8',
+                announcement_text: settings.announcement_text || '',
+                warning_note: settings.warning_note || 'ระยะเวลาเป็นการประมาณการโดยระบบอัตโนมัติ อาจคลาดเคลื่อนจากเวลาจริง'
             }
         });
     });
@@ -665,7 +674,16 @@ app.get('/api/admin/settings', authMiddleware, (req, res) => {
                 is_queue_active: settings.is_queue_active === '1',
                 closed_message: settings.closed_message || 'ระบบปิดปรับปรุงชั่วคราว',
                 target_cookies: settings.target_cookies || '',
-                capsolver_key: settings.capsolver_key || ''
+                capsolver_key: settings.capsolver_key || '',
+                shop_name: settings.shop_name || 'Checkorder',
+                hero_title: settings.hero_title || 'ตรวจสอบคิวจองสินค้าพรีออเดอร์',
+                hero_subtitle: settings.hero_subtitle || 'กรอกชื่อบัญชีที่ลงทะเบียนไว้กับเว็บต้นทาง (thewestern.rdcw.xyz) เพื่อให้บอทเข้าไปสแกนดึงออเดอร์มาแสดงผล',
+                color_shop_name: settings.color_shop_name || '#4A7BF8',
+                color_hero_title: settings.color_hero_title || '#4A7BF8',
+                color_border: settings.color_border || '#4A7BF8',
+                color_accent: settings.color_accent || '#4A7BF8',
+                announcement_text: settings.announcement_text || '',
+                warning_note: settings.warning_note || 'ระยะเวลาเป็นการประมาณการโดยระบบอัตโนมัติ อาจคลาดเคลื่อนจากเวลาจริง'
             }
         });
     });
@@ -673,7 +691,21 @@ app.get('/api/admin/settings', authMiddleware, (req, res) => {
 
 // Admin endpoint - save settings
 app.post('/api/admin/settings', authMiddleware, (req, res) => {
-    const { is_queue_active, closed_message, target_cookies, capsolver_key } = req.body;
+    const { 
+        is_queue_active, 
+        closed_message, 
+        target_cookies, 
+        capsolver_key,
+        shop_name,
+        hero_title,
+        hero_subtitle,
+        color_shop_name,
+        color_hero_title,
+        color_border,
+        color_accent,
+        announcement_text,
+        warning_note
+    } = req.body;
     const adminName = req.adminUser.username;
 
     db.serialize(() => {
@@ -687,6 +719,15 @@ app.post('/api/admin/settings', authMiddleware, (req, res) => {
         if (capsolver_key !== undefined) {
             stmt.run('capsolver_key', capsolver_key.trim());
         }
+        if (shop_name !== undefined) stmt.run('shop_name', shop_name.trim());
+        if (hero_title !== undefined) stmt.run('hero_title', hero_title.trim());
+        if (hero_subtitle !== undefined) stmt.run('hero_subtitle', hero_subtitle.trim());
+        if (color_shop_name !== undefined) stmt.run('color_shop_name', color_shop_name.trim());
+        if (color_hero_title !== undefined) stmt.run('color_hero_title', color_hero_title.trim());
+        if (color_border !== undefined) stmt.run('color_border', color_border.trim());
+        if (color_accent !== undefined) stmt.run('color_accent', color_accent.trim());
+        if (announcement_text !== undefined) stmt.run('announcement_text', announcement_text.trim());
+        if (warning_note !== undefined) stmt.run('warning_note', warning_note.trim());
         stmt.finalize();
     });
 
@@ -1548,7 +1589,7 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
         while (hasMore && pageIndex < maxPages) {
             const ordersPageUrl = isLocalHost
                 ? `http://localhost:${PORT}/api/target-mock/orders?username=${encodeURIComponent(searchedUsername)}`
-                : `${TARGET_BASE_URL}/manager/orders?page=${pageIndex + 1}&ps=100&q=${encodeURIComponent(searchedUsername)}`;
+                : `${TARGET_BASE_URL}/manager/orders?page=${pageIndex + 1}&ps=100&q=${encodeURIComponent(searchedUsername)}&sf=1`;
 
             logger.info(`[Cheerio Scraper] Requesting Page ${pageIndex} URL: ${ordersPageUrl}`);
 
@@ -1691,16 +1732,18 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
                     const statusCell = $(cells[3]);
                     const statusTextRaw = statusCell.text().replace(/[\u25CF•]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
                     let parsedStatus = 'Processing';
-                    if (statusTextRaw.includes('PROCESSING') || statusTextRaw.includes('กำลังดำเนินการ') || statusTextRaw.includes('กำลังทำ')) {
-                        parsedStatus = 'Processing';
+                    if (statusTextRaw.includes('REFUNDED') || statusTextRaw.includes('คืนเงิน')) {
+                        parsedStatus = 'Refunded';
+                    } else if (statusTextRaw.includes('CANCELLED') || statusTextRaw.includes('CANCEL') || statusTextRaw.includes('ยกเลิก')) {
+                        parsedStatus = 'Cancelled';
+                    } else if (statusTextRaw.includes('FAILED') || statusTextRaw.includes('ไม่สำเร็จ') || statusTextRaw.includes('ล้มเหลว')) {
+                        parsedStatus = 'Failed';
                     } else if (statusTextRaw.includes('COMPLETED') || statusTextRaw.includes('สำเร็จ') || statusTextRaw.includes('เสร็จ')) {
                         parsedStatus = 'Completed';
                     } else if (statusTextRaw.includes('PENDING') || statusTextRaw.includes('รอดำเนินการ') || statusTextRaw.includes('รอ')) {
                         parsedStatus = 'Pending';
-                    } else if (statusTextRaw.includes('FAILED') || statusTextRaw.includes('ล้มเหลว')) {
-                        parsedStatus = 'Failed';
-                    } else if (statusTextRaw.includes('CANCELLED') || statusTextRaw.includes('ยกเลิก')) {
-                        parsedStatus = 'Cancelled';
+                    } else if (statusTextRaw.includes('PROCESSING') || statusTextRaw.includes('กำลังดำเนินการ') || statusTextRaw.includes('กำลังทำ')) {
+                        parsedStatus = 'Processing';
                     }
 
                     // 4. Note / หมายเหตุ (Col 5, index 4)
@@ -1879,7 +1922,7 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
             const maxPages = 15; // Safeguard to prevent infinite loops
 
             while (hasMore && pageIndex < maxPages) {
-                const targetOrdersUrl = `${TARGET_BASE_URL}/manager/orders?page=${pageIndex + 1}&ps=100&q=${encodeURIComponent(searchedUsername)}`;
+                const targetOrdersUrl = `${TARGET_BASE_URL}/manager/orders?page=${pageIndex + 1}&ps=100&q=${encodeURIComponent(searchedUsername)}&sf=1`;
 
                 logger.info(`[Puppeteer Live] Navigating to page ${pageIndex} URL: ${targetOrdersUrl}`);
                 await page.goto(targetOrdersUrl, { waitUntil: 'networkidle2', timeout: 25000 });
@@ -1950,16 +1993,18 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                         const statusCell = cells[3];
                         const statusTextRaw = statusCell.innerText.replace(/[\u25CF•]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
                         let parsedStatus = 'Processing';
-                        if (statusTextRaw.includes('PROCESSING') || statusTextRaw.includes('กำลังดำเนินการ') || statusTextRaw.includes('กำลังทำ')) {
-                            parsedStatus = 'Processing';
+                        if (statusTextRaw.includes('REFUNDED') || statusTextRaw.includes('คืนเงิน')) {
+                            parsedStatus = 'Refunded';
+                        } else if (statusTextRaw.includes('CANCELLED') || statusTextRaw.includes('CANCEL') || statusTextRaw.includes('ยกเลิก')) {
+                            parsedStatus = 'Cancelled';
+                        } else if (statusTextRaw.includes('FAILED') || statusTextRaw.includes('ไม่สำเร็จ') || statusTextRaw.includes('ล้มเหลว')) {
+                            parsedStatus = 'Failed';
                         } else if (statusTextRaw.includes('COMPLETED') || statusTextRaw.includes('สำเร็จ') || statusTextRaw.includes('เสร็จ')) {
                             parsedStatus = 'Completed';
                         } else if (statusTextRaw.includes('PENDING') || statusTextRaw.includes('รอดำเนินการ') || statusTextRaw.includes('รอ')) {
                             parsedStatus = 'Pending';
-                        } else if (statusTextRaw.includes('FAILED') || statusTextRaw.includes('ล้มเหลว')) {
-                            parsedStatus = 'Failed';
-                        } else if (statusTextRaw.includes('CANCELLED') || statusTextRaw.includes('ยกเลิก')) {
-                            parsedStatus = 'Cancelled';
+                        } else if (statusTextRaw.includes('PROCESSING') || statusTextRaw.includes('กำลังดำเนินการ') || statusTextRaw.includes('กำลังทำ')) {
+                            parsedStatus = 'Processing';
                         }
 
                         // 4. Extract Note
@@ -2120,21 +2165,31 @@ async function fetchTargetOrdersForUser(searchedUsername) {
         if (remoteOrders && Array.isArray(remoteOrders)) {
             const now = new Date().toISOString();
 
-            // Filter out Completed, Failed, and Cancelled orders. Keep only active preorders (Pending/Processing).
-            const activeOrders = remoteOrders.filter(order => 
-                order.queue_status === 'Pending' || order.queue_status === 'Processing'
-            );
-
-            // Sort active orders by purchase time ASC (oldest first) so queue_position is assigned correctly
-            activeOrders.sort((a, b) => new Date(a.purchase_time || now) - new Date(b.purchase_time || now));
+            // Sort all remote orders by purchase time ASC (oldest first) so queue_position is assigned correctly
+            remoteOrders.sort((a, b) => new Date(a.purchase_time || now) - new Date(b.purchase_time || now));
 
             db.run("DELETE FROM orders WHERE LOWER(username) = LOWER(?)", [searchedUsername], (deleteErr) => {
-                activeOrders.forEach((remoteOrder, index) => {
+                let activeOrderIndex = 0;
+                remoteOrders.forEach((remoteOrder) => {
                     const resolved = resolveAppProductDetails(remoteOrder.product_name, remoteOrder.product_image);
-                    const queuePos = index + 1;
+                    
+                    const isTerminal = ['Completed', 'Failed', 'Cancelled', 'Refunded'].includes(remoteOrder.queue_status);
+                    let queuePos = 0;
+                    if (!isTerminal) {
+                        activeOrderIndex++;
+                        queuePos = activeOrderIndex;
+                    }
+                    
                     const waitMinutes = queuePos * 2;
                     const purchaseTimeDate = new Date(remoteOrder.purchase_time || now);
-                    const waitTimeTarget = new Date(purchaseTimeDate.getTime() + waitMinutes * 60 * 1000).toISOString();
+                    const waitTimeTarget = isTerminal ? null : new Date(purchaseTimeDate.getTime() + waitMinutes * 60 * 1000).toISOString();
+
+                    // If status from main site is Processing (กำลังดำเนินการ) or Pending (รอดำเนินการ):
+                    // map to Pending if queuePos > 1, and Processing if queuePos === 1
+                    let finalStatus = remoteOrder.queue_status;
+                    if (finalStatus === 'Processing' || finalStatus === 'Pending') {
+                        finalStatus = queuePos === 1 ? 'Processing' : 'Pending';
+                    }
 
                     db.run(
                         `INSERT INTO orders (username, product_name, product_image, queue_position, queue_status, estimated_wait_time, notes, buyer_notes, purchase_time, wait_time_target, last_updated)
@@ -2144,8 +2199,8 @@ async function fetchTargetOrdersForUser(searchedUsername) {
                             remoteOrder.product_name || resolved.product_name,
                             resolved.product_image,
                             queuePos,
-                            remoteOrder.queue_status || 'Processing',
-                            `ประมาณ ${waitMinutes} นาที`,
+                            finalStatus,
+                            isTerminal ? 'จัดส่งสำเร็จแล้ว' : `ประมาณ ${waitMinutes} นาที`,
                             remoteOrder.notes || 'ดึงและซิงค์ข้อมูลจากเว็บต้นทางเรียบร้อยแล้ว',
                             remoteOrder.buyer_notes || '',
                             remoteOrder.purchase_time || now,
@@ -2156,9 +2211,9 @@ async function fetchTargetOrdersForUser(searchedUsername) {
                 });
             });
 
-            broadcastLog(searchedUsername, 'success', `[Bot Scraper] สแกนพบพรีออเดอร์ของ "${searchedUsername}" ทั้งหมด ${activeOrders.length} รายการจากเว็บต้นทาง! (กรองรายการที่เสร็จสิ้นออกแล้ว)`);
+            broadcastLog(searchedUsername, 'success', `[Bot Scraper] สแกนพบพรีออเดอร์ของ "${searchedUsername}" ทั้งหมด ${remoteOrders.length} รายการจากเว็บต้นทาง!`);
             broadcastUpdate('orders');
-            return { success: true, count: activeOrders.length };
+            return { success: true, count: remoteOrders.length };
         } else {
             throw new Error('Invalid response from target orders API');
         }
@@ -2194,6 +2249,24 @@ app.get('/api/admin/system-stats', (req, res) => {
 // Retrocompatible Frontend Endpoints & Socket Logs
 // ==========================================
 
+// Helper to filter public orders (keep all pending/processing, keep finished only if within 24 hours)
+function filterPublicOrders(orders) {
+    if (!orders || !Array.isArray(orders)) return [];
+    const now = Date.now();
+    return orders.filter(order => {
+        const isTerminal = ['Completed', 'Failed', 'Cancelled', 'Refunded'].includes(order.queue_status);
+        if (!isTerminal) return true;
+        if (!order.purchase_time) return false;
+        try {
+            const purchaseTime = new Date(order.purchase_time).getTime();
+            const diffHours = (now - purchaseTime) / (1000 * 60 * 60);
+            return diffHours <= 24;
+        } catch (e) {
+            return false;
+        }
+    });
+}
+
 // REST API endpoint: Check Queue Status (Public Endpoint)
 app.get('/api/check-queue', (req, res) => {
     // Check if queue service is active
@@ -2222,7 +2295,7 @@ app.get('/api/check-queue', (req, res) => {
         const lastTime = lastScrapeTime[userKey] || 0;
         if (now - lastTime < 30000) {
             logger.info(`[API] Returning cached orders for "${username}" (last scraped ${((now - lastTime)/1000).toFixed(1)}s ago)`);
-            db.all("SELECT * FROM orders WHERE LOWER(username) = LOWER(?) AND queue_status IN ('Pending', 'Processing') ORDER BY purchase_time DESC", [username], (err, orders) => {
+            db.all("SELECT * FROM orders WHERE LOWER(username) = LOWER(?) ORDER BY purchase_time DESC", [username], (err, orders) => {
                 if (err) {
                     logger.error(err.message);
                     return res.status(500).json({ success: false, message: 'Database error' });
@@ -2230,7 +2303,7 @@ app.get('/api/check-queue', (req, res) => {
                 return res.json({
                     success: true,
                     account_exists: true,
-                    data: orders || []
+                    data: filterPublicOrders(orders)
                 });
             });
             return;
@@ -2241,7 +2314,7 @@ app.get('/api/check-queue', (req, res) => {
 
         // Bot uses TEST4455 system credentials to scan target site for user orders
         fetchTargetOrdersForUser(username).finally(() => {
-            db.all("SELECT * FROM orders WHERE LOWER(username) = LOWER(?) AND queue_status IN ('Pending', 'Processing') ORDER BY purchase_time DESC", [username], (err, orders) => {
+            db.all("SELECT * FROM orders WHERE LOWER(username) = LOWER(?) ORDER BY purchase_time DESC", [username], (err, orders) => {
                 if (err) {
                     logger.error(err.message);
                     return res.status(500).json({ success: false, message: 'Database error' });
@@ -2254,7 +2327,7 @@ app.get('/api/check-queue', (req, res) => {
                 return res.json({
                     success: true,
                     account_exists: true,
-                    data: orders || []
+                    data: filterPublicOrders(orders)
                 });
             });
         });

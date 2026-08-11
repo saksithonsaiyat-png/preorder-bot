@@ -4,10 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบหลังบ้าน (Admin Control Panel) • checkorder</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <title>ระบบหลังบ้าน (Admin Control Panel) • Checkorder</title>
     <!-- LINE Seed Sans TH Font -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontpkg/line-seed-sans-th@latest/index.css">
 
@@ -17,7 +14,7 @@
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ["'LINE Seed Sans TH'", "'IBM Plex Sans Thai'", "'Inter'", 'sans-serif'],
+                        sans: ["'LINE Seed Sans TH'", 'sans-serif'],
                         mono: ["'Courier New'", 'Courier', 'monospace']
                     },
                     colors: {
@@ -46,7 +43,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         body {
-            font-family: 'LINE Seed Sans TH', 'IBM Plex Sans Thai', 'Inter', sans-serif;
+            font-family: 'LINE Seed Sans TH', sans-serif;
             background-color: #0e0e11;
         }
 
@@ -87,7 +84,7 @@
         class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" x-cloak>
         <div class="bg-zinc-950/80 border border-zinc-800 rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-2xl space-y-6 backdrop-blur-md">
             <div class="text-center space-y-2">
-                <span class="text-3xl font-extrabold tracking-wider bg-clip-text text-transparent bg-brand-gradient">checkorder</span>
+                <span class="text-2xl font-medium bg-clip-text text-transparent bg-brand-gradient" style="letter-spacing: -0.04em;">Checkorder</span>
                 <h3 class="text-lg font-bold text-white"
                     x-text="authMode === 'login' ? 'เข้าสู่ระบบผู้ดูแลหลังบ้าน' : 'สมัครสมาชิกผู้ดูแลระบบ'"></h3>
             </div>
@@ -154,7 +151,7 @@
         <header class="bg-[#0e0e11]/75 border-b border-zinc-900 sticky top-0 z-40 backdrop-blur-md">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                 <div class="flex items-center space-x-3">
-                    <span class="text-2xl font-extrabold tracking-wider bg-clip-text text-transparent bg-brand-gradient">checkorder</span>
+                    <span class="text-xl font-medium bg-clip-text text-transparent bg-brand-gradient" style="letter-spacing: -0.04em;">Checkorder</span>
                 </div>
                 <div class="flex items-center space-x-5 text-xs font-medium">
                     <span class="text-zinc-400">ผู้ใช้: <span class="text-white font-bold" x-text="adminUsername"></span></span>
@@ -447,6 +444,10 @@
                             <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">คำอธิบายใต้หัวข้อ (Hero Subtitle)</label>
                             <textarea x-model="settingsForm.hero_subtitle" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white h-20 resize-y" required></textarea>
                         </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">หมายเหตุข้อควรระวัง (Warning Note)</label>
+                            <textarea x-model="settingsForm.warning_note" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white h-20 resize-y" required></textarea>
+                        </div>
 
                         <!-- Color Customization -->
                         <div class="border-t border-zinc-800 pt-4">
@@ -589,7 +590,8 @@
                         <option value="Processing">กำลังดำเนินการ (Processing)</option>
                         <option value="Completed">จัดส่งสำเร็จ (Completed)</option>
                         <option value="Failed">จัดส่งไม่สำเร็จ (Failed)</option>
-                        <option value="Cancelled">ยกเลิก (Cancelled)</option>
+                        <option value="Cancelled">คำสั่งซื้อถูกยกเลิก (Cancelled)</option>
+                        <option value="Refunded">คำสั่งซื้อถูกยกเลิกและคืนเงิน (Refunded)</option>
                     </select>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
@@ -669,14 +671,15 @@
                     closed_message: '', 
                     target_cookies: '', 
                     capsolver_key: '',
-                    shop_name: 'checkorder',
+                    shop_name: 'Checkorder',
                     hero_title: 'ตรวจสอบคิวจองสินค้าพรีออเดอร์',
                     hero_subtitle: 'กรอกชื่อบัญชีที่ลงทะเบียนไว้กับเว็บต้นทาง (thewestern.rdcw.xyz) เพื่อให้บอทเข้าไปสแกนดึงออเดอร์มาแสดงผล',
                     color_shop_name: '#4A7BF8',
                     color_hero_title: '#4A7BF8',
                     color_border: '#4A7BF8',
                     color_accent: '#4A7BF8',
-                    announcement_text: ''
+                    announcement_text: '',
+                    warning_note: ''
                 },
                 profileForm: { newUsername: '', newPassword: '' },
                 newAdminForm: { username: '', password: '' },
@@ -896,7 +899,7 @@
                                 this.settingsForm.closed_message = result.data.closed_message;
                                 this.settingsForm.target_cookies = result.data.target_cookies || '';
                                 this.settingsForm.capsolver_key = result.data.capsolver_key || '';
-                                this.settingsForm.shop_name = result.data.shop_name || 'checkorder';
+                                this.settingsForm.shop_name = result.data.shop_name || 'Checkorder';
                                 this.settingsForm.hero_title = result.data.hero_title || '';
                                 this.settingsForm.hero_subtitle = result.data.hero_subtitle || '';
                                 this.settingsForm.color_shop_name = result.data.color_shop_name || '#4A7BF8';
@@ -904,6 +907,7 @@
                                 this.settingsForm.color_border = result.data.color_border || '#4A7BF8';
                                 this.settingsForm.color_accent = result.data.color_accent || '#4A7BF8';
                                 this.settingsForm.announcement_text = result.data.announcement_text || '';
+                                this.settingsForm.warning_note = result.data.warning_note || '';
                             }
                         }
                     } catch (e) { }
@@ -1144,7 +1148,7 @@
 
                 // ====== HELPER METHODS ======
                 getCountdownLabel(order) {
-                    if (['Completed', 'Failed', 'Cancelled'].includes(order.queue_status)) return '-';
+                    if (['Completed', 'Failed', 'Cancelled', 'Refunded'].includes(order.queue_status)) return '-';
                     if (!order.wait_time_target) return 'ไม่มีเวลากำหนด';
 
                     const target = new Date(order.wait_time_target).getTime();
@@ -1159,7 +1163,7 @@
                 },
 
                 getQueueLabel(status) {
-                    return { Pending: 'รอดำเนินการ', Processing: 'กำลังดำเนินการ', Completed: 'จัดส่งสำเร็จ', Failed: 'จัดส่งไม่สำเร็จ', Cancelled: 'ยกเลิกรายการ' }[status] || status;
+                    return { Pending: 'รอดำเนินการ', Processing: 'กำลังดำเนินการ', Completed: 'จัดส่งสำเร็จ', Failed: 'จัดส่งไม่สำเร็จ', Cancelled: 'คำสั่งซื้อถูกยกเลิก', Refunded: 'คำสั่งซื้อถูกยกเลิกและคืนเงิน' }[status] || status;
                 },
 
                 formatDate(dateStr) {
