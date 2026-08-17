@@ -1688,8 +1688,10 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
 
                     // 1. Product / สินค้า (Col 2, index 1)
                     const productCell = $(cells[1]);
-                    const mainName = productCell.find('h1').first().text().trim();
-                    const subDetails = productCell.find('p').first().text().trim();
+                    const mainNameEl = productCell.find('h1, .font-medium, div:first-child').first();
+                    const subDetailsEl = productCell.find('p, .text-muted-foreground, div:last-child').first();
+                    const mainName = mainNameEl.length > 0 ? mainNameEl.text().trim() : '';
+                    const subDetails = (subDetailsEl.length > 0 && subDetailsEl[0] !== mainNameEl[0]) ? subDetailsEl.text().trim() : '';
                     const fullProductText = productCell.text().replace(/\s+/g, ' ').trim();
 
                     let resolvedProductName = '';
@@ -1713,12 +1715,18 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
                     if (userH1.length > 0) {
                         parsedUser = userH1.first().text().trim();
                     } else {
-                        const spans = userCell.find('span');
-                        if (spans.length > 0) {
-                            parsedUser = $(spans[spans.length - 1]).text().trim();
+                        const usernameEl = userCell.find('.text-muted-foreground, div:last-child, span:last-child').first();
+                        if (usernameEl.length > 0) {
+                            parsedUser = usernameEl.text().trim();
                         } else {
                             parsedUser = userCell.text().replace(/\s+/g, ' ').trim();
                         }
+                    }
+
+                    // Clean avatar initial if present (e.g. "P Polarxsz" or "P\nPolarxsz" -> "Polarxsz")
+                    const parts = parsedUser.split(/\s+/);
+                    if (parts.length > 1 && parts[0].length === 1) {
+                        parsedUser = parts.slice(1).join(' ').trim();
                     }
 
                     // Skip row if it doesn't match the searched username
@@ -1844,6 +1852,19 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
     return null;
 }
 
+function parseCookieStringToObjects(cookieStr, domain) {
+    if (!cookieStr) return [];
+    return cookieStr.split(';').map(pair => {
+        const trimmed = pair.trim();
+        if (!trimmed) return null;
+        const index = trimmed.indexOf('=');
+        if (index === -1) return null;
+        const name = trimmed.substring(0, index).trim();
+        const value = trimmed.substring(index + 1).trim();
+        return { name, value, domain };
+    }).filter(Boolean);
+}
+
 // Advanced Puppeteer Headless Live Scraper Engine (100% Real Live Scraping with Rukcom VPS Path Support)
 async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
     if (!puppeteer) {
@@ -1898,21 +1919,73 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                 }));
             }
         } else {
-            await page.goto(`${TARGET_BASE_URL}/auth/signin`, { waitUntil: 'networkidle2', timeout: 20000 }).catch(() => {});
-            
-            // Fill credentials if login form present
-            const userInput = await page.$('input[name="name"], input[name="username"], input[type="text"], input[type="email"], input#username');
-            const passInput = await page.$('input[name="password"], input[type="password"], input#password');
-            if (userInput && passInput) {
-                await userInput.type(username);
-                await passInput.type(password);
-                const submitBtn = await page.$('button[type="submit"], input[type="submit"]');
-                if (submitBtn) {
-                    await Promise.all([
-                        submitBtn.click(),
-                        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 }).catch(() => {})
-                    ]);
+            // Retrieve cached cookies and set them in Puppeteer page
+            const cachedCookiesStr = await getTargetCookies();
+            if (cachedCookiesStr) {
+                try {
+                    const domain = new URL(TARGET_BASE_URL).hostname;
+                    const puppeteerCookies = parseCookieStringToObjects(cachedCookiesStr, domain);
+                    await page.setCookie(...puppeteerCookies);
+                    logger.info(`[Puppeteer Live] Cached cookies injected successfully into page.`);
+                } catch (cookieErr) {
+                    logger.warn(`[Puppeteer Live] Failed to inject cached cookies: ${cookieErr.message}`);
                 }
+            }
+
+            // Define target orders url for the first page scan
+            const initialTargetOrdersUrl = `${TARGET_BASE_URL}/manager/orders?page=1&ps=100&q=${encodeURIComponent(searchedUsername)}&sf=1`;
+            logger.info(`[Puppeteer Live] Navigating directly to orders URL: ${initialTargetOrdersUrl}`);
+            
+            // Try to navigate directly to orders page
+            await page.goto(initialTargetOrdersUrl, { waitUntil: 'networkidle2', timeout: 25000 }).catch(() => {});
+
+            // Check if we got redirected to signin page
+            if (page.url().includes('/auth/signin')) {
+                logger.info(`[Puppeteer Live] Redirected to signin page. Programmatic login required.`);
+                
+                // Solve invisible recaptcha
+                logger.info(`[Puppeteer Live] Requesting CapSolver to solve invisible reCAPTCHA...`);
+                const captchaToken = await solveCaptchaWithCapSolver(searchedUsername);
+                if (captchaToken) {
+                    await page.evaluate((token) => {
+                        const rEl = document.getElementById('g-recaptcha-response') || document.querySelector('[name="g-recaptcha-response"]');
+                        if (rEl) {
+                            rEl.innerHTML = token;
+                            rEl.value = token;
+                        }
+                    }, captchaToken);
+                    logger.info(`[Puppeteer Live] Solved CAPTCHA token injected into page.`);
+                } else {
+                    logger.warn(`[Puppeteer Live] No CAPTCHA token obtained from CapSolver.`);
+                }
+
+                // Fill credentials and log in
+                const userInput = await page.$('input[name="name"], input[name="username"], input[type="text"], input[type="email"], input#username');
+                const passInput = await page.$('input[name="password"], input[type="password"], input#password');
+                if (userInput && passInput) {
+                    await userInput.type(username);
+                    await passInput.type(password);
+                    const submitBtn = await page.$('button[type="submit"], input[type="submit"]');
+                    if (submitBtn) {
+                        logger.info(`[Puppeteer Live] Clicking login submit button...`);
+                        await submitBtn.click();
+                        
+                        // Wait up to 20 seconds for redirection
+                        for (let i = 0; i < 20; i++) {
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            if (!page.url().includes('/auth/signin')) {
+                                logger.info(`[Puppeteer Live] Redirection detected: ${page.url()}`);
+                                break;
+                            }
+                        }
+                    }
+                } else {
+                    logger.error(`[Puppeteer Live] Signin form inputs not found on page.`);
+                }
+
+                // Re-navigate to the target orders URL
+                logger.info(`[Puppeteer Live] Navigating back to orders URL: ${initialTargetOrdersUrl}`);
+                await page.goto(initialTargetOrdersUrl, { waitUntil: 'networkidle2', timeout: 25000 }).catch(() => {});
             }
 
             let pageIndex = 0;
@@ -1923,9 +1996,12 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
 
             while (hasMore && pageIndex < maxPages) {
                 const targetOrdersUrl = `${TARGET_BASE_URL}/manager/orders?page=${pageIndex + 1}&ps=100&q=${encodeURIComponent(searchedUsername)}&sf=1`;
-
-                logger.info(`[Puppeteer Live] Navigating to page ${pageIndex} URL: ${targetOrdersUrl}`);
-                await page.goto(targetOrdersUrl, { waitUntil: 'networkidle2', timeout: 25000 });
+                
+                // For pageIndex > 0, we need to navigate to subsequent pages
+                if (pageIndex > 0) {
+                    logger.info(`[Puppeteer Live] Navigating to page ${pageIndex} URL: ${targetOrdersUrl}`);
+                    await page.goto(targetOrdersUrl, { waitUntil: 'networkidle2', timeout: 25000 }).catch(() => {});
+                }
 
                 // Wait for table rows to render
                 await page.waitForSelector('table tbody tr, .order-card', { timeout: 10000 }).catch(() => {});
@@ -1947,11 +2023,11 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
 
                         // 1. Extract Product details
                         const productCell = cells[1];
-                        const mainNameEl = productCell.querySelector('h1');
-                        const subDetailsEl = productCell.querySelector('p');
-                        const mainName = mainNameEl ? mainNameEl.innerText.trim() : '';
-                        const subDetails = subDetailsEl ? subDetailsEl.innerText.trim() : '';
-                        const fullProductText = productCell.innerText.replace(/\s+/g, ' ').trim();
+                        const mainNameEl = productCell.querySelector('h1, .font-medium, div:first-child');
+                        const subDetailsEl = productCell.querySelector('p, .text-muted-foreground, div:last-child');
+                        const mainName = mainNameEl ? mainNameEl.textContent.trim() : '';
+                        const subDetails = (subDetailsEl && subDetailsEl !== mainNameEl) ? subDetailsEl.textContent.trim() : '';
+                        const fullProductText = productCell.textContent.replace(/\s+/g, ' ').trim();
 
                         let resolvedProductName = '';
                         let resolvedBuyerNotes = '';
@@ -1972,14 +2048,20 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                         const userH1El = userCell.querySelector('h1');
                         let parsedUser = '';
                         if (userH1El) {
-                            parsedUser = userH1El.innerText.trim();
+                            parsedUser = userH1El.textContent.trim();
                         } else {
-                            const spans = Array.from(userCell.querySelectorAll('span'));
-                            if (spans.length > 0) {
-                                parsedUser = spans[spans.length - 1].innerText.trim();
+                            const usernameEl = userCell.querySelector('.text-muted-foreground') || userCell.querySelector('div:last-child') || userCell.querySelector('span:last-child');
+                            if (usernameEl) {
+                                parsedUser = usernameEl.textContent.trim();
                             } else {
-                                parsedUser = userCell.innerText.replace(/\s+/g, ' ').trim();
+                                parsedUser = userCell.textContent.replace(/\s+/g, ' ').trim();
                             }
+                        }
+
+                        // Clean avatar initial if present (e.g. "P Polarxsz" or "P\nPolarxsz" -> "Polarxsz")
+                        const parts = parsedUser.split(/\s+/);
+                        if (parts.length > 1 && parts[0].length === 1) {
+                            parsedUser = parts.slice(1).join(' ').trim();
                         }
 
                         // Skip row if it doesn't match the searched username
@@ -2249,18 +2331,28 @@ app.get('/api/admin/system-stats', (req, res) => {
 // Retrocompatible Frontend Endpoints & Socket Logs
 // ==========================================
 
-// Helper to filter public orders (keep all pending/processing, keep finished only if within 24 hours)
+// Helper to filter public orders (keep all pending/processing, keep finished only if from today or within last 24 hours)
 function filterPublicOrders(orders) {
     if (!orders || !Array.isArray(orders)) return [];
-    const now = Date.now();
+    const now = new Date();
+    
+    // Start of today in local timezone (00:00:00 local time)
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    
     return orders.filter(order => {
-        const isTerminal = ['Completed', 'Failed', 'Cancelled', 'Refunded'].includes(order.queue_status);
+        // Any status other than Pending and Processing is considered terminal/finalized
+        const isTerminal = !['Pending', 'Processing'].includes(order.queue_status);
         if (!isTerminal) return true;
         if (!order.purchase_time) return false;
         try {
             const purchaseTime = new Date(order.purchase_time).getTime();
-            const diffHours = (now - purchaseTime) / (1000 * 60 * 60);
-            return diffHours <= 24;
+            const diffHours = (now.getTime() - purchaseTime) / (1000 * 60 * 60);
+            
+            // Display if within last 24 hours or from today (since local midnight)
+            const isWithinLast24Hours = (diffHours >= 0 && diffHours <= 24);
+            const isToday = purchaseTime >= todayStart;
+            
+            return isWithinLast24Hours || isToday;
         } catch (e) {
             return false;
         }
