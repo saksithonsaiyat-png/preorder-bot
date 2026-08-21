@@ -341,9 +341,9 @@ app.get('/api/admin/dashboard-stats', authMiddleware, (req, res) => {
     const monthlyStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
     const result = {
-        daily: { processing: 0, completed: 0, failed: 0, cancelled: 0 },
-        weekly: { processing: 0, completed: 0, failed: 0, cancelled: 0 },
-        monthly: { processing: 0, completed: 0, failed: 0, cancelled: 0 }
+        daily: { processing: 0, completed: 0, failed: 0, cancelled: 0, refunded: 0 },
+        weekly: { processing: 0, completed: 0, failed: 0, cancelled: 0, refunded: 0 },
+        monthly: { processing: 0, completed: 0, failed: 0, cancelled: 0, refunded: 0 }
     };
 
     const queries = [
@@ -357,7 +357,7 @@ app.get('/api/admin/dashboard-stats', authMiddleware, (req, res) => {
         db.all(sql, [param], (err, rows) => {
             if (!err && rows) {
                 // Reset this period's count just to be clean
-                result[period] = { processing: 0, completed: 0, failed: 0, cancelled: 0 };
+                result[period] = { processing: 0, completed: 0, failed: 0, cancelled: 0, refunded: 0 };
                 rows.forEach(row => {
                     const status = row.queue_status;
                     if (status === 'Processing' || status === 'Pending') {
@@ -368,6 +368,8 @@ app.get('/api/admin/dashboard-stats', authMiddleware, (req, res) => {
                         result[period].failed = row.count;
                     } else if (status === 'Cancelled') {
                         result[period].cancelled = row.count;
+                    } else if (status === 'Refunded') {
+                        result[period].refunded = row.count;
                     }
                 });
             }

@@ -5,8 +5,94 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ระบบหลังบ้าน (Admin Control Panel) • Checkorder</title>
-    <!-- LINE Seed Sans TH Font -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontpkg/line-seed-sans-th@latest/index.css">
+    <!-- LINE Seed Sans (English + Thai) Font -->
+    <style>
+        @font-face {
+            font-family: 'LINE Seed Sans';
+            src: url('/fonts/LINESeedSans_Th.ttf') format('truetype');
+            font-weight: 300;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'LINE Seed Sans';
+            src: url('/fonts/LINESeedSans_Rg.ttf') format('truetype');
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'LINE Seed Sans';
+            src: url('/fonts/LINESeedSans_Bd.ttf') format('truetype');
+            font-weight: 500;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'LINE Seed Sans';
+            src: url('/fonts/LINESeedSans_Bd.ttf') format('truetype');
+            font-weight: 700;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'LINE Seed Sans';
+            src: url('/fonts/LINESeedSans_XBd.ttf') format('truetype');
+            font-weight: 800;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'LINE Seed Sans';
+            src: url('/fonts/LINESeedSans_He.ttf') format('truetype');
+            font-weight: 900;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: 'LINE Seed Sans TH';
+            src: url('/fonts/LINESeedSansTH_Th.ttf') format('truetype');
+            font-weight: 300;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'LINE Seed Sans TH';
+            src: url('/fonts/LINESeedSansTH_Rg.ttf') format('truetype');
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'LINE Seed Sans TH';
+            src: url('/fonts/LINESeedSansTH_Bd.ttf') format('truetype');
+            font-weight: 500;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'LINE Seed Sans TH';
+            src: url('/fonts/LINESeedSansTH_Bd.ttf') format('truetype');
+            font-weight: 700;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'LINE Seed Sans TH';
+            src: url('/fonts/LINESeedSansTH_XBd.ttf') format('truetype');
+            font-weight: 800;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'LINE Seed Sans TH';
+            src: url('/fonts/LINESeedSansTH_He.ttf') format('truetype');
+            font-weight: 900;
+            font-style: normal;
+            font-display: swap;
+        }
+    </style>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -14,7 +100,7 @@
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ["'LINE Seed Sans TH'", 'sans-serif'],
+                        sans: ["'LINE Seed Sans'", "'LINE Seed Sans TH'", 'sans-serif'],
                         mono: ["'Courier New'", 'Courier', 'monospace']
                     },
                     colors: {
@@ -28,9 +114,9 @@
                             glow: 'rgba(244,63,94,0.2)',
                         },
                         card: {
-                            DEFAULT: '#18181b',
-                            hover: '#202024',
-                            border: '#27272a',
+                            DEFAULT: '#ffffff',
+                            hover: '#f4f4f5',
+                            border: '#e4e4e7',
                         }
                     },
                     backgroundImage: {
@@ -42,9 +128,9 @@
     </script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
-        body {
-            font-family: 'LINE Seed Sans TH', sans-serif;
-            background-color: #0e0e11;
+        body, input, select, textarea, button {
+            font-family: 'LINE Seed Sans', 'LINE Seed Sans TH', sans-serif;
+            background-color: #ffffff;
         }
 
         [x-cloak] {
@@ -70,7 +156,7 @@
     </style>
 </head>
 
-<body class="text-zinc-100 min-h-screen flex flex-col antialiased relative overflow-x-hidden"
+<body class="text-zinc-800 bg-white min-h-screen flex flex-col antialiased relative overflow-x-hidden"
     x-data="adminDashboard()">
 
     <!-- Background (No floating stars) -->
@@ -81,11 +167,11 @@
 
     <!-- ==================== AUTH OVERLAY ==================== -->
     <div x-show="!authenticated"
-        class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" x-cloak>
-        <div class="bg-zinc-950/80 border border-zinc-800 rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-2xl space-y-6 backdrop-blur-md">
+        class="fixed inset-0 z-50 bg-zinc-950/50 flex items-center justify-center p-4 backdrop-blur-sm" x-cloak>
+        <div class="bg-white border border-zinc-200 rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-2xl space-y-6">
             <div class="text-center space-y-2">
                 <span class="text-2xl font-medium bg-clip-text text-transparent bg-brand-gradient" style="letter-spacing: -0.04em;">Checkorder</span>
-                <h3 class="text-lg font-bold text-white"
+                <h3 class="text-lg font-bold text-zinc-800"
                     x-text="authMode === 'login' ? 'เข้าสู่ระบบผู้ดูแลหลังบ้าน' : 'สมัครสมาชิกผู้ดูแลระบบ'"></h3>
             </div>
 
@@ -95,15 +181,15 @@
             <!-- Login Form -->
             <form x-show="authMode === 'login'" @submit.prevent="handleLogin()" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">ชื่อผู้ใช้ (Username)</label>
+                    <label class="block text-xs font-semibold text-zinc-500 uppercase mb-2">ชื่อผู้ใช้ (Username)</label>
                     <input type="text" x-model="loginForm.username" placeholder="admin"
-                        class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3.5 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-white"
+                        class="w-full bg-white border border-zinc-300 rounded-lg py-2.5 px-3.5 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-zinc-800"
                         required>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">รหัสผ่าน (Password)</label>
+                    <label class="block text-xs font-semibold text-zinc-500 uppercase mb-2">รหัสผ่าน (Password)</label>
                     <input type="password" x-model="loginForm.password" placeholder="••••••••"
-                        class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3.5 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-white"
+                        class="w-full bg-white border border-zinc-300 rounded-lg py-2.5 px-3.5 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-zinc-800"
                         required>
                 </div>
                 <button type="submit"
@@ -120,15 +206,15 @@
             <!-- Register Form -->
             <form x-show="authMode === 'register'" @submit.prevent="handleRegister()" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">ตั้งชื่อผู้ใช้ (Username)</label>
+                    <label class="block text-xs font-semibold text-zinc-505 uppercase mb-2">ตั้งชื่อผู้ใช้ (Username)</label>
                     <input type="text" x-model="registerForm.username" placeholder="ชื่อผู้ใช้คนใหม่"
-                        class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3.5 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-white"
+                        class="w-full bg-white border border-zinc-300 rounded-lg py-2.5 px-3.5 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-zinc-800"
                         required>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">ตั้งรหัสผ่าน (Password)</label>
+                    <label class="block text-xs font-semibold text-zinc-505 uppercase mb-2">ตั้งรหัสผ่าน (Password)</label>
                     <input type="password" x-model="registerForm.password" placeholder="••••••••"
-                        class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3.5 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-white"
+                        class="w-full bg-white border border-zinc-300 rounded-lg py-2.5 px-3.5 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-zinc-800"
                         required>
                 </div>
                 <button type="submit"
@@ -148,24 +234,24 @@
     <div x-show="authenticated" class="flex-grow flex flex-col" x-cloak>
 
         <!-- Header -->
-        <header class="bg-[#0e0e11]/75 border-b border-zinc-900 sticky top-0 z-40 backdrop-blur-md">
+        <header class="bg-white/75 border-b border-zinc-200 sticky top-0 z-40 backdrop-blur-md">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                 <div class="flex items-center space-x-3">
                     <span class="text-xl font-medium bg-clip-text text-transparent bg-brand-gradient" style="letter-spacing: -0.04em;">Checkorder</span>
                 </div>
-                <div class="flex items-center space-x-5 text-xs font-medium">
-                    <span class="text-zinc-400">ผู้ใช้: <span class="text-white font-bold" x-text="adminUsername"></span></span>
-                    <button @click="handleLogout()" class="text-rose-400 hover:text-rose-300 font-semibold hover:underline">ออกจากระบบ</button>
+                <div class="flex items-center space-x-3 text-xs font-medium">
+                    <span class="border border-zinc-200 bg-zinc-50 rounded-lg px-3 py-1.5 text-zinc-700 font-bold" x-text="adminUsername"></span>
+                    <button @click="handleLogout()" class="border border-rose-250 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg px-3 py-1.5 font-bold transition">ออกจากระบบ</button>
                 </div>
             </div>
         </header>
 
         <!-- Navigation Tabs -->
-        <div class="bg-zinc-950/80 border-b border-white/5 backdrop-blur-sm">
+        <div class="bg-zinc-50 border-b border-zinc-200 backdrop-blur-sm">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1 text-sm">
                 <template x-for="tab in tabs" :key="tab.id">
                     <button @click="currentTab = tab.id"
-                        :class="currentTab === tab.id ? 'border-primary text-white font-bold bg-white/[0.02]' : 'border-transparent text-zinc-400 hover:text-white hover:bg-white/[0.01]'"
+                        :class="currentTab === tab.id ? 'border-primary text-zinc-900 font-bold bg-white' : 'border-transparent text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100/50'"
                         class="py-3.5 px-4 border-b-2 transition rounded-t-lg" x-text="tab.label"></button>
                 </template>
             </div>
@@ -191,39 +277,44 @@
             <!-- ==================== TAB 1: OVERVIEW ==================== -->
             <div x-show="currentTab === 'overview'" class="space-y-6">
                 <!-- Period Selector -->
-                <div class="flex items-center justify-between border-b border-zinc-800 pb-4">
+                <div class="flex items-center justify-between border-b border-zinc-200 pb-4">
                     <div>
-                        <h2 class="text-xl font-bold">ภาพรวมระบบ (Dashboard)</h2>
-                        <p class="text-xs text-zinc-400 mt-1">สถิติการพรีออเดอร์แบ่งตามช่วงเวลา</p>
+                        <h2 class="text-xl font-bold text-zinc-800">ภาพรวมระบบ (Dashboard)</h2>
+                        <p class="text-xs text-zinc-500 mt-1">สถิติการพรีออเดอร์แบ่งตามช่วงเวลา</p>
                     </div>
-                    <div class="flex bg-zinc-900 border border-zinc-800 rounded-lg p-0.5 text-xs font-semibold">
-                        <button @click="statsPeriod = 'daily'" :class="statsPeriod === 'daily' ? 'bg-primary text-white' : 'text-zinc-400 hover:text-white'" class="px-4 py-1.5 rounded-md transition">รายวัน</button>
-                        <button @click="statsPeriod = 'weekly'" :class="statsPeriod === 'weekly' ? 'bg-primary text-white' : 'text-zinc-400 hover:text-white'" class="px-4 py-1.5 rounded-md transition">รายสัปดาห์</button>
-                        <button @click="statsPeriod = 'monthly'" :class="statsPeriod === 'monthly' ? 'bg-primary text-white' : 'text-zinc-400 hover:text-white'" class="px-4 py-1.5 rounded-md transition">รายเดือน</button>
+                    <div class="flex bg-zinc-100 border border-zinc-200 rounded-lg p-0.5 text-xs font-semibold">
+                        <button @click="statsPeriod = 'daily'" :class="statsPeriod === 'daily' ? 'bg-primary text-white' : 'text-zinc-500 hover:text-zinc-800'" class="px-4 py-1.5 rounded-md transition">รายวัน</button>
+                        <button @click="statsPeriod = 'weekly'" :class="statsPeriod === 'weekly' ? 'bg-primary text-white' : 'text-zinc-500 hover:text-zinc-800'" class="px-4 py-1.5 rounded-md transition">รายสัปดาห์</button>
+                        <button @click="statsPeriod = 'monthly'" :class="statsPeriod === 'monthly' ? 'bg-primary text-white' : 'text-zinc-500 hover:text-zinc-800'" class="px-4 py-1.5 rounded-md transition">รายเดือน</button>
                     </div>
                 </div>
 
                 <!-- Stats Cards -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                     <div class="bg-card border border-card-border rounded-xl p-5 text-center hover:border-blue-500/30 transition">
-                        <span class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider block">กำลังดำเนินการ / รอคิว</span>
-                        <span class="text-3xl font-extrabold text-blue-400 block mt-3" x-text="dashboardStats[statsPeriod]?.processing ?? 0"></span>
-                        <span class="text-[10px] text-zinc-600 mt-1 block">รายการ</span>
+                        <span class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider block">กำลังดำเนินการ</span>
+                        <span class="text-3xl font-extrabold text-blue-600 block mt-3" x-text="dashboardStats[statsPeriod]?.processing ?? 0"></span>
+                        <span class="text-[10px] text-zinc-500 mt-1 block">รายการ</span>
                     </div>
                     <div class="bg-card border border-card-border rounded-xl p-5 text-center hover:border-emerald-500/30 transition">
                         <span class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider block">จัดส่งสำเร็จ</span>
-                        <span class="text-3xl font-extrabold text-emerald-400 block mt-3" x-text="dashboardStats[statsPeriod]?.completed ?? 0"></span>
-                        <span class="text-[10px] text-zinc-600 mt-1 block">รายการ</span>
+                        <span class="text-3xl font-extrabold text-emerald-600 block mt-3" x-text="dashboardStats[statsPeriod]?.completed ?? 0"></span>
+                        <span class="text-[10px] text-zinc-500 mt-1 block">รายการ</span>
                     </div>
                     <div class="bg-card border border-card-border rounded-xl p-5 text-center hover:border-rose-500/30 transition">
                         <span class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider block">จัดส่งไม่สำเร็จ</span>
-                        <span class="text-3xl font-extrabold text-rose-400 block mt-3" x-text="dashboardStats[statsPeriod]?.failed ?? 0"></span>
-                        <span class="text-[10px] text-zinc-600 mt-1 block">รายการ</span>
+                        <span class="text-3xl font-extrabold text-rose-600 block mt-3" x-text="dashboardStats[statsPeriod]?.failed ?? 0"></span>
+                        <span class="text-[10px] text-zinc-500 mt-1 block">รายการ</span>
                     </div>
                     <div class="bg-card border border-card-border rounded-xl p-5 text-center hover:border-zinc-500/30 transition">
                         <span class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider block">ยกเลิกรายการ</span>
-                        <span class="text-3xl font-extrabold text-zinc-400 block mt-3" x-text="dashboardStats[statsPeriod]?.cancelled ?? 0"></span>
-                        <span class="text-[10px] text-zinc-600 mt-1 block">รายการ</span>
+                        <span class="text-3xl font-extrabold text-zinc-500 block mt-3" x-text="dashboardStats[statsPeriod]?.cancelled ?? 0"></span>
+                        <span class="text-[10px] text-zinc-500 mt-1 block">รายการ</span>
+                    </div>
+                    <div class="bg-card border border-card-border rounded-xl p-5 text-center hover:border-amber-500/30 transition">
+                        <span class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider block">คืนเงิน</span>
+                        <span class="text-3xl font-extrabold text-amber-600 block mt-3" x-text="dashboardStats[statsPeriod]?.refunded ?? 0"></span>
+                        <span class="text-[10px] text-zinc-500 mt-1 block">รายการ</span>
                     </div>
                 </div>
 
@@ -231,25 +322,25 @@
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
                     <!-- Bot Scheduler -->
                     <div class="bg-card border border-card-border rounded-xl p-6 space-y-4">
-                        <h3 class="text-base font-bold text-white border-b border-zinc-800 pb-3">ตั้งเวลาบอทพรีออเดอร์</h3>
+                        <h3 class="text-base font-bold text-zinc-800 border-b border-zinc-200 pb-3">ตั้งเวลาบอทพรีออเดอร์</h3>
                         <form @submit.prevent="createTask()" class="space-y-3">
                             <div>
-                                <label class="block text-xs font-semibold text-zinc-400 uppercase mb-1.5">ลิงก์ปลายทาง</label>
-                                <input type="text" x-model="taskForm.target_url" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white" required>
+                                <label class="block text-xs font-semibold text-zinc-505 uppercase mb-1.5">ลิงก์ปลายทาง</label>
+                                <input type="text" x-model="taskForm.target_url" class="w-full bg-white border border-zinc-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-zinc-800" required>
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label class="block text-xs font-semibold text-zinc-400 uppercase mb-1.5">Variant ID</label>
-                                    <input type="text" x-model="taskForm.variant_id" placeholder="variant_id" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white" required>
+                                    <label class="block text-xs font-semibold text-zinc-505 uppercase mb-1.5">Variant ID</label>
+                                    <input type="text" x-model="taskForm.variant_id" placeholder="variant_id" class="w-full bg-white border border-zinc-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-zinc-800" required>
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-semibold text-zinc-400 uppercase mb-1.5">จำนวน</label>
-                                    <input type="number" x-model="taskForm.quantity" min="1" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white" required>
+                                    <label class="block text-xs font-semibold text-zinc-505 uppercase mb-1.5">จำนวน</label>
+                                    <input type="number" x-model="taskForm.quantity" min="1" class="w-full bg-white border border-zinc-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-zinc-800" required>
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-xs font-semibold text-zinc-400 uppercase mb-1.5">เวลาทำงาน</label>
-                                <input type="datetime-local" x-model="taskForm.execution_time" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white" required>
+                                <label class="block text-xs font-semibold text-zinc-505 uppercase mb-1.5">เวลาทำงาน</label>
+                                <input type="datetime-local" x-model="taskForm.execution_time" class="w-full bg-white border border-zinc-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-zinc-800" required>
                             </div>
                             <button type="submit" class="w-full bg-primary hover:opacity-90 text-white font-semibold py-2 rounded-lg text-sm transition">ยืนยันกำหนดการรันบอท</button>
                         </form>
@@ -257,10 +348,10 @@
 
                     <!-- Live Terminal -->
                     <div class="bg-card border border-card-border rounded-xl p-6 lg:col-span-2 flex flex-col">
-                        <div class="border-b border-zinc-800 pb-3 flex justify-between items-center">
-                            <h3 class="text-base font-bold text-white">คอนโซลไลฟ์สตรีม (SSE Logs)</h3>
+                        <div class="border-b border-zinc-200 pb-3 flex justify-between items-center">
+                            <h3 class="text-base font-bold text-zinc-800">คอนโซลไลฟ์สตรีม (SSE Logs)</h3>
                             <button @click="toggleKillSwitch(!stats.isGlobalKillSwitchActive)"
-                                :class="stats.isGlobalKillSwitchActive ? 'bg-zinc-800 hover:bg-zinc-700 border-zinc-600 text-zinc-300' : 'bg-red-500/10 hover:bg-red-500/20 border-red-500/30 text-red-400'"
+                                :class="stats.isGlobalKillSwitchActive ? 'bg-zinc-200 hover:bg-zinc-300 border-zinc-300 text-zinc-750' : 'bg-red-55 hover:bg-red-100 border-red-200 text-red-600'"
                                 class="border px-3 py-1.5 rounded-lg text-[10px] font-bold transition flex items-center gap-1.5">
                                 <span class="w-2 h-2 rounded-full" :class="stats.isGlobalKillSwitchActive ? 'bg-zinc-400' : 'bg-red-500 animate-ping'"></span>
                                 <span x-text="stats.isGlobalKillSwitchActive ? 'ปลดล็อกระบบ' : 'EMERGENCY STOP'"></span>
@@ -296,41 +387,96 @@
             <div x-show="currentTab === 'orders'" class="space-y-4">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h2 class="text-xl font-bold">รายการออเดอร์ทั้งหมด</h2>
-                        <p class="text-xs text-zinc-400 mt-1">จัดการ แก้ไข ปรับคิว และสถานะของออเดอร์พรีออเดอร์</p>
+                        <h2 class="text-xl font-bold text-zinc-800">รายการออเดอร์ทั้งหมด</h2>
+                        <p class="text-xs text-zinc-500 mt-1">จัดการสถานะ เวลารอคิว ลำดับคิว ลบคิว และหมายเหตุ</p>
                     </div>
-                    <button @click="fetchOrders()" class="bg-zinc-800 hover:bg-zinc-700 text-white font-semibold py-1.5 px-4 rounded-lg text-xs border border-zinc-700 transition flex items-center gap-1.5">
+                    <button @click="fetchOrders()" class="bg-zinc-50 hover:bg-zinc-100 text-zinc-700 font-semibold py-1.5 px-4 rounded-lg text-xs border border-zinc-300 transition flex items-center gap-1.5">
                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                         รีเฟรช
                     </button>
                 </div>
 
-                <!-- Search Box -->
-                <div class="relative max-w-md w-full">
-                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-zinc-500 pointer-events-none">
-                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </span>
-                    <input type="text" x-model="orderSearchQuery" placeholder="ค้นหาด้วย ชื่อผู้ซื้อ หรือ ชื่อสินค้า..." 
-                        class="w-full bg-black/40 border border-zinc-800 rounded-lg pl-9 pr-8 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition"
-                    >
-                    <span x-show="orderSearchQuery" @click="orderSearchQuery = ''" class="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-500 hover:text-zinc-350 cursor-pointer" x-cloak>
-                        ✕
-                    </span>
+                <!-- Search, Filters, and Completed Toggle -->
+                <div class="flex flex-col md:flex-row gap-3 items-center justify-between">
+                    <!-- Search Box -->
+                    <div class="relative max-w-xs w-full">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-zinc-400 pointer-events-none">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </span>
+                        <input type="text" x-model="orderSearchQuery" placeholder="ค้นหาแบบรวดเร็ว" 
+                            class="w-full bg-white border border-zinc-300 rounded-lg pl-9 pr-8 py-2 text-xs text-zinc-800 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition"
+                        >
+                        <span x-show="orderSearchQuery" @click="orderSearchQuery = ''" class="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-400 hover:text-zinc-650 cursor-pointer" x-cloak>
+                            ✕
+                        </span>
+                    </div>
+
+                    <!-- Filters and Toggles -->
+                    <div class="flex flex-wrap items-center gap-2 text-xs w-full md:w-auto justify-end">
+                        <!-- Status Filter -->
+                        <div>
+                            <select x-model="filterStatus" class="bg-white border border-zinc-300 rounded-lg py-1.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-zinc-700 font-semibold cursor-pointer">
+                                <option value="all">สถานะทั้งหมด</option>
+                                <option value="Pending">รอดำเนินการ (Pending)</option>
+                                <option value="Processing">กำลังดำเนินการ (Processing)</option>
+                                <option value="Completed">จัดส่งสำเร็จ (Completed)</option>
+                                <option value="Failed">จัดส่งไม่สำเร็จ (Failed)</option>
+                                <option value="Cancelled">คำสั่งซื้อถูกยกเลิก (Cancelled)</option>
+                                <option value="Refunded">คำสั่งซื้อถูกยกเลิกและคืนเงิน (Refunded)</option>
+                            </select>
+                        </div>
+
+                        <!-- Category Filter -->
+                        <div>
+                            <select x-model="filterCategory" class="bg-white border border-zinc-300 rounded-lg py-1.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-zinc-700 font-semibold cursor-pointer">
+                                <option value="all">หมวดหมู่ทั้งหมด</option>
+                                <option value="mobile">มือถือ / แท็บเล็ต</option>
+                                <option value="computer">คอมพิวเตอร์ / อุปกรณ์</option>
+                                <option value="game">เกม / คอนโซล</option>
+                                <option value="other">อื่นๆ</option>
+                            </select>
+                        </div>
+
+                        <!-- Completed Orders Toggle -->
+                        <button @click="showCompleted = !showCompleted" 
+                            :class="showCompleted ? 'bg-primary text-white border-primary' : 'bg-white text-zinc-700 border-zinc-300 hover:bg-zinc-50'"
+                            class="border rounded-lg py-1.5 px-3 font-semibold transition text-xs flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full" :class="showCompleted ? 'bg-white' : 'bg-zinc-400'"></span>
+                            <span x-text="showCompleted ? 'ซ่อนออเดอร์ที่เสร็จสิ้น' : 'แสดงออเดอร์ที่เสร็จสิ้น'"></span>
+                        </button>
+                    </div>
                 </div>
 
+                <!-- Bulk Actions Bar -->
+                <div x-show="selectedOrderIds.length > 0" x-transition class="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center justify-between gap-3" x-cloak>
+                    <div class="text-xs font-semibold text-zinc-700">
+                        เลือกออเดอร์แล้ว <span class="text-primary font-bold" x-text="selectedOrderIds.length"></span> รายการ
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button @click="openBulkModal()" class="bg-primary hover:opacity-90 text-white font-semibold py-1.5 px-3.5 rounded-lg text-xs transition">
+                            ทำรายการพร้อมกัน (Bulk Actions)
+                        </button>
+                        <button @click="selectedOrderIds = []" class="bg-white hover:bg-zinc-50 text-zinc-650 border border-zinc-300 font-semibold py-1.5 px-3.5 rounded-lg text-xs transition">
+                            ยกเลิกเลือกทั้งหมด
+                        </button>
+                    </div>
+                </div>
                 <div class="bg-card border border-card-border rounded-xl overflow-hidden shadow-lg">
                     <div class="overflow-x-auto">
-                        <table class="w-full text-left text-xs">
+                                                <table class="w-full text-left text-xs">
                             <thead>
-                                <tr class="bg-zinc-950 border-b border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider text-[10px]">
-                                    <th class="p-4">สินค้า</th>
-                                    <th class="p-4">ผู้ซื้อ</th>
-                                    <th class="p-4">เวลาสั่งซื้อ</th>
-                                    <th class="p-4">หมายเหตุ</th>
-                                    <th class="p-4 text-center">คิว</th>
-                                    <th class="p-4 text-center">เวลานับถอยหลัง</th>
+                                <tr class="bg-zinc-50 border-b border-zinc-200 text-zinc-655 font-bold uppercase tracking-wider text-[10px]">
+                                    <th class="p-4 text-center w-10">
+                                        <input type="checkbox" @change="toggleSelectAll($event)" :checked="selectedOrderIds.length === filteredOrders().length && filteredOrders().length > 0" class="w-4 h-4 rounded text-primary border-zinc-300 focus:ring-0 cursor-pointer bg-white">
+                                    </th>
+                                    <th class="p-4 text-center">สินค้า</th>
+                                    <th class="p-4 text-center">ผู้ซื้อ</th>
+                                    <th class="p-4 text-center">เวลาสั่งซื้อ</th>
+                                    <th class="p-4 text-center">หมายเหตุ</th>
+                                    <th class="p-4 text-center">ลำดับคิว</th>
+                                    <th class="p-4 text-center">เวลารอคิว</th>
                                     <th class="p-4 text-center">สถานะ</th>
                                     <th class="p-4 text-center">อัปเดตล่าสุด</th>
                                     <th class="p-4 text-center">จัดการ</th>
@@ -338,50 +484,60 @@
                             </thead>
                             <tbody>
                                 <template x-for="order in filteredOrders()" :key="order.id">
-                                    <tr class="border-b border-zinc-800/60 hover:bg-white/[0.015] transition">
+                                    <tr class="border-b border-zinc-200 hover:bg-zinc-50 transition">
+                                        <td class="p-4 text-center">
+                                            <input type="checkbox" :value="order.id" x-model="selectedOrderIds" class="w-4 h-4 rounded text-primary border-zinc-300 focus:ring-0 cursor-pointer bg-white">
+                                        </td>
                                         <td class="p-4">
-                                            <div class="flex items-center space-x-3">
-                                                <img :src="order.product_image" @error="$event.target.src='https://placehold.co/80x80/4A7BF8/FFF?text=Product'" class="w-10 h-10 object-cover rounded-lg border border-zinc-800">
-                                                <span class="font-bold text-white text-[11px] max-w-[180px] truncate block" x-text="order.product_name"></span>
+                                            <div class="flex flex-col items-center text-center space-y-1.5 justify-center">
+                                                <img :src="order.product_image" @error="$event.target.src='https://placehold.co/80x80/4A7BF8/FFF?text=Product'" class="w-10 h-10 object-cover rounded-lg border border-zinc-200">
+                                                <span class="font-bold text-zinc-800 text-[11px] max-w-[180px] line-clamp-2 block" x-text="order.product_name"></span>
                                             </div>
                                         </td>
-                                        <td class="p-4 font-semibold text-zinc-300 text-[11px]" x-text="order.username"></td>
-                                        <td class="p-4 text-zinc-400 text-[10px]" x-text="formatDate(order.purchase_time)"></td>
-                                        <td class="p-4 text-zinc-500 text-[10px] max-w-[120px] truncate" x-text="order.buyer_notes || '-'"></td>
+                                        <td class="p-4 text-center">
+                                            <div class="inline-flex items-center space-x-2 border border-zinc-200 bg-zinc-50 rounded-full py-1 px-2.5 shadow-sm">
+                                                <img :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(order.username)}&background=4A7BF8&color=FFF&bold=true`" class="w-5 h-5 rounded-full object-cover">
+                                                <span class="font-bold text-zinc-700 text-[11px]" x-text="order.username"></span>
+                                            </div>
+                                        </td>
+                                        <td class="p-4 text-center text-zinc-500 text-[10px]" x-text="formatDate(order.purchase_time)"></td>
+                                        <td class="p-4 text-center text-zinc-650 text-[10px]" x-text="order.buyer_notes || '-'"></td>
                                         <td class="p-4 text-center">
                                             <span class="font-extrabold text-sm text-primary" x-text="order.queue_position > 0 ? '#' + order.queue_position : '-'"></span>
                                         </td>
-                                        <td class="p-4 text-center font-bold text-blue-400 text-[11px]" x-text="getCountdownLabel(order)"></td>
+                                        <td class="p-4 text-center font-bold text-blue-600 text-[11px]" x-text="getCountdownLabel(order)"></td>
                                         <td class="p-4 text-center">
                                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
                                                 :class="{
-                                                    'bg-amber-500/10 text-amber-400 border border-amber-500/20': order.queue_status === 'Pending',
-                                                    'bg-blue-500/10 text-blue-400 border border-blue-500/20': order.queue_status === 'Processing',
-                                                    'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20': order.queue_status === 'Completed',
-                                                    'bg-rose-500/10 text-rose-400 border border-rose-500/20': order.queue_status === 'Failed',
-                                                    'bg-zinc-500/10 text-zinc-400 border border-zinc-500/20': order.queue_status === 'Cancelled'
+                                                    'bg-amber-50 text-amber-700 border border-amber-200': order.queue_status === 'Pending',
+                                                    'bg-blue-50 text-blue-700 border border-blue-200': order.queue_status === 'Processing',
+                                                    'bg-emerald-50 text-emerald-700 border border-emerald-200': order.queue_status === 'Completed',
+                                                    'bg-rose-50 text-rose-700 border border-rose-200': order.queue_status === 'Failed',
+                                                    'bg-zinc-100 text-zinc-600 border border-zinc-200': order.queue_status === 'Cancelled',
+                                                    'bg-orange-50 text-orange-700 border border-orange-200': order.queue_status === 'Refunded'
                                                 }">
                                                 <span class="w-1.5 h-1.5 rounded-full mr-1.5" :class="{
                                                     'bg-amber-500': order.queue_status === 'Pending',
                                                     'bg-blue-500': order.queue_status === 'Processing',
                                                     'bg-emerald-500': order.queue_status === 'Completed',
                                                     'bg-rose-500': order.queue_status === 'Failed',
-                                                    'bg-zinc-400': order.queue_status === 'Cancelled'
+                                                    'bg-zinc-400': order.queue_status === 'Cancelled',
+                                                    'bg-orange-505': order.queue_status === 'Refunded'
                                                 }"></span>
                                                 <span x-text="getQueueLabel(order.queue_status)"></span>
                                             </span>
                                         </td>
-                                        <td class="p-4 text-center text-[10px] text-zinc-500" x-text="formatDate(order.last_updated)"></td>
+                                        <td class="p-4 text-center text-[10px] text-zinc-505" x-text="formatDate(order.last_updated)"></td>
                                         <td class="p-4 text-center">
                                             <div class="flex items-center justify-center gap-1.5">
-                                                <button @click="openEditModal(order)" class="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 px-2.5 py-1 rounded text-[10px] font-bold transition">แก้ไข</button>
-                                                <button @click="deleteOrder(order.id)" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2.5 py-1 rounded text-[10px] font-bold transition">ลบ</button>
+                                                <button @click="openEditModal(order)" class="bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 px-2.5 py-1 rounded text-[10px] font-bold transition">แก้ไข</button>
+                                                <button @click="openDeleteConfirm(order.id)" class="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 px-2.5 py-1 rounded text-[10px] font-bold transition">ลบ</button>
                                             </div>
                                         </td>
                                     </tr>
                                 </template>
                                 <template x-if="orders.length === 0">
-                                    <tr><td colspan="9" class="p-8 text-center text-zinc-500 text-sm">ไม่มีออเดอร์ในระบบ</td></tr>
+                                    <tr><td colspan="10" class="p-8 text-center text-zinc-500 text-sm">ไม่มีออเดอร์ในระบบ</td></tr>
                                 </template>
                             </tbody>
                         </table>
@@ -393,29 +549,29 @@
             <div x-show="currentTab === 'settings'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Queue Service Control -->
                 <div class="bg-card border border-card-border rounded-xl p-6 space-y-6">
-                    <div class="border-b border-zinc-800 pb-3">
-                        <h3 class="text-lg font-bold text-white">ควบคุมการให้บริการระบบคิว</h3>
-                        <p class="text-xs text-zinc-400">เปิด/ปิดระบบตรวจสอบคิวสำหรับผู้ใช้งานหน้าบ้าน</p>
+                    <div class="border-b border-zinc-200 pb-3">
+                        <h3 class="text-lg font-bold text-zinc-800">ควบคุมการให้บริการระบบคิว</h3>
+                        <p class="text-xs text-zinc-505">เปิด/ปิดระบบตรวจสอบคิวสำหรับผู้ใช้งานหน้าบ้าน</p>
                     </div>
                     <form @submit.prevent="saveSystemSettings()" class="space-y-4">
-                        <div class="flex items-center space-x-3 bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
-                            <input type="checkbox" id="queue-toggle" x-model="settingsForm.is_queue_active" class="w-5 h-5 rounded text-primary bg-black border-zinc-700 focus:ring-0 cursor-pointer">
+                        <div class="flex items-center space-x-3 bg-zinc-50 border border-zinc-200 rounded-lg p-4">
+                            <input type="checkbox" id="queue-toggle" x-model="settingsForm.is_queue_active" class="w-5 h-5 rounded text-primary bg-white border-zinc-300 focus:ring-0 cursor-pointer">
                             <label for="queue-toggle" class="cursor-pointer">
-                                <span class="text-sm font-semibold text-zinc-200 block">เปิดให้บริการเช็คคิว</span>
+                                <span class="text-sm font-semibold text-zinc-700 block">เปิดให้บริการเช็คคิว</span>
                                 <span class="text-[10px] text-zinc-500" x-text="settingsForm.is_queue_active ? 'หน้าบ้านทำงานปกติ' : 'หน้าบ้านถูกปิดกั้น ผู้ใช้จะเห็นข้อความด้านล่าง'"></span>
                             </label>
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">ข้อความแจ้งผู้ใช้ (กรณีปิดบริการ)</label>
-                            <textarea x-model="settingsForm.closed_message" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white h-24 resize-none" required></textarea>
+                            <label class="block text-xs font-semibold text-zinc-750 uppercase mb-2">ข้อความแจ้งผู้ใช้ (กรณีปิดบริการ)</label>
+                            <textarea x-model="settingsForm.closed_message" class="w-full bg-white border border-zinc-300 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-zinc-800 h-24 resize-none" required></textarea>
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">Target Session Cookies (คุกกี้ล็อกอินของเว็บต้นทาง - เลี่ยง Captcha)</label>
-                            <textarea x-model="settingsForm.target_cookies" placeholder="ตัวอย่าง: __Host-next-auth.csrf-token=...; next-auth.session-token=..." class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-white h-24 font-mono" style="word-break: break-all;"></textarea>
+                            <label class="block text-xs font-semibold text-zinc-750 uppercase mb-2">Target Session Cookies (คุกกี้ล็อกอินของเว็บต้นทาง - เลี่ยง Captcha)</label>
+                            <textarea x-model="settingsForm.target_cookies" placeholder="ตัวอย่าง: __Host-next-auth.csrf-token=...; next-auth.session-token=..." class="w-full bg-white border border-zinc-300 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-zinc-800 h-24 font-mono" style="word-break: break-all;"></textarea>
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">CapSolver API Key (ระบบแก้กัปช่าอัตโนมัติ)</label>
-                            <input type="text" x-model="settingsForm.capsolver_key" placeholder="วางคีย์ของ CapSolver ที่คัดลอกมาที่นี่" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-white font-mono">
+                            <label class="block text-xs font-semibold text-zinc-750 uppercase mb-2">CapSolver API Key (ระบบแก้กัปช่าอัตโนมัติ)</label>
+                            <input type="text" x-model="settingsForm.capsolver_key" placeholder="วางคีย์ของ CapSolver ที่คัดลอกมาที่นี่" class="w-full bg-white border border-zinc-300 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-zinc-800 font-mono">
                         </div>
                         <button type="submit" class="bg-primary hover:opacity-90 text-white font-semibold py-2 px-5 rounded-lg text-sm transition">บันทึกการตั้งค่า</button>
                     </form>
@@ -423,62 +579,62 @@
 
                 <!-- Frontpage Styling & Customization -->
                 <div class="bg-card border border-card-border rounded-xl p-6 space-y-6">
-                    <div class="border-b border-zinc-800 pb-3">
-                        <h3 class="text-lg font-bold text-white">ตั้งค่าการแสดงผลและสไตล์หน้าแรก</h3>
-                        <p class="text-xs text-zinc-400">แก้ไขข้อมูลร้านค้า ประกาศ สี และหัวข้อในการแสดงผลหน้าหลัก</p>
+                    <div class="border-b border-zinc-200 pb-3">
+                        <h3 class="text-lg font-bold text-zinc-800">ตั้งค่าการแสดงผลและสไตล์หน้าแรก</h3>
+                        <p class="text-xs text-zinc-505">แก้ไขข้อมูลร้านค้า ประกาศ สี และหัวข้อในการแสดงผลหน้าหลัก</p>
                     </div>
                     <form @submit.prevent="saveSystemSettings()" class="space-y-4">
                         <div>
-                            <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">ชื่อร้าน (Shop Name)</label>
-                            <input type="text" x-model="settingsForm.shop_name" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white" required>
+                            <label class="block text-xs font-semibold text-zinc-750 uppercase mb-2">ชื่อร้าน (Shop Name)</label>
+                            <input type="text" x-model="settingsForm.shop_name" class="w-full bg-white border border-zinc-300 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-zinc-800" required>
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">ประกาศด้านบนสุด (Announcement Text)</label>
-                            <input type="text" x-model="settingsForm.announcement_text" placeholder="ว่างไว้หากไม่ต้องการแสดงประกาศ" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white">
+                            <label class="block text-xs font-semibold text-zinc-750 uppercase mb-2">ประกาศด้านบนสุด (Announcement Text)</label>
+                            <input type="text" x-model="settingsForm.announcement_text" placeholder="ว่างไว้หากไม่ต้องการแสดงประกาศ" class="w-full bg-white border border-zinc-300 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-zinc-800">
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">หัวข้อหลักหน้าแรก (Hero Title)</label>
-                            <input type="text" x-model="settingsForm.hero_title" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white" required>
+                            <label class="block text-xs font-semibold text-zinc-750 uppercase mb-2">หัวข้อหลักหน้าแรก (Hero Title)</label>
+                            <input type="text" x-model="settingsForm.hero_title" class="w-full bg-white border border-zinc-300 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-zinc-800" required>
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">คำอธิบายใต้หัวข้อ (Hero Subtitle)</label>
-                            <textarea x-model="settingsForm.hero_subtitle" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white h-20 resize-y" required></textarea>
+                            <label class="block text-xs font-semibold text-zinc-750 uppercase mb-2">คำอธิบายใต้หัวข้อ (Hero Subtitle)</label>
+                            <textarea x-model="settingsForm.hero_subtitle" class="w-full bg-white border border-zinc-300 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-zinc-800 h-20 resize-y" required></textarea>
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">หมายเหตุข้อควรระวัง (Warning Note)</label>
-                            <textarea x-model="settingsForm.warning_note" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white h-20 resize-y" required></textarea>
+                            <label class="block text-xs font-semibold text-zinc-750 uppercase mb-2">หมายเหตุข้อควรระวัง (Warning Note)</label>
+                            <textarea x-model="settingsForm.warning_note" class="w-full bg-white border border-zinc-300 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-zinc-800 h-20 resize-y" required></textarea>
                         </div>
 
                         <!-- Color Customization -->
-                        <div class="border-t border-zinc-800 pt-4">
-                            <h4 class="text-xs font-bold text-zinc-450 uppercase mb-3">ปรับแต่งสีของระบบ (Color Themes)</h4>
+                        <div class="border-t border-zinc-200 pt-4">
+                            <h4 class="text-xs font-bold text-zinc-505 mb-3">ปรับแต่งสีของระบบ (Color Themes)</h4>
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-[10px] font-semibold text-zinc-400 uppercase mb-1.5">สีชื่อร้าน (Shop Name)</label>
+                                    <label class="block text-[10px] font-semibold text-zinc-505 mb-1.5">สีชื่อร้าน (Shop Name)</label>
                                     <div class="flex items-center space-x-2">
                                         <input type="color" x-model="settingsForm.color_shop_name" class="w-8 h-8 rounded-lg bg-transparent border-0 cursor-pointer">
-                                        <input type="text" x-model="settingsForm.color_shop_name" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-1 px-2 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-zinc-300 font-mono">
+                                        <input type="text" x-model="settingsForm.color_shop_name" class="w-full bg-white border border-zinc-300 rounded-lg py-1 px-2 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-zinc-750 font-mono">
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] font-semibold text-zinc-400 uppercase mb-1.5">สีหัวข้อใหญ่ (Hero Title)</label>
+                                    <label class="block text-[10px] font-semibold text-zinc-505 mb-1.5">สีหัวข้อใหญ่ (Hero Title)</label>
                                     <div class="flex items-center space-x-2">
                                         <input type="color" x-model="settingsForm.color_hero_title" class="w-8 h-8 rounded-lg bg-transparent border-0 cursor-pointer">
-                                        <input type="text" x-model="settingsForm.color_hero_title" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-1 px-2 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-zinc-300 font-mono">
+                                        <input type="text" x-model="settingsForm.color_hero_title" class="w-full bg-white border border-zinc-300 rounded-lg py-1 px-2 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-zinc-750 font-mono">
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] font-semibold text-zinc-400 uppercase mb-1.5">สีของขอบกรอบ (Card Borders)</label>
+                                    <label class="block text-[10px] font-semibold text-zinc-505 mb-1.5">สีของขอบกรอบ (Card Borders)</label>
                                     <div class="flex items-center space-x-2">
                                         <input type="color" x-model="settingsForm.color_border" class="w-8 h-8 rounded-lg bg-transparent border-0 cursor-pointer">
-                                        <input type="text" x-model="settingsForm.color_border" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-1 px-2 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-zinc-300 font-mono">
+                                        <input type="text" x-model="settingsForm.color_border" class="w-full bg-white border border-zinc-300 rounded-lg py-1 px-2 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-zinc-750 font-mono">
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] font-semibold text-zinc-400 uppercase mb-1.5">สีปุ่มและไอคอน (Accent Theme)</label>
+                                    <label class="block text-[10px] font-semibold text-zinc-505 mb-1.5">สีปุ่มและไอคอน (Accent Theme)</label>
                                     <div class="flex items-center space-x-2">
                                         <input type="color" x-model="settingsForm.color_accent" class="w-8 h-8 rounded-lg bg-transparent border-0 cursor-pointer">
-                                        <input type="text" x-model="settingsForm.color_accent" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-1 px-2 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-zinc-300 font-mono">
+                                        <input type="text" x-model="settingsForm.color_accent" class="w-full bg-white border border-zinc-300 rounded-lg py-1 px-2 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-zinc-750 font-mono">
                                     </div>
                                 </div>
                             </div>
@@ -490,22 +646,22 @@
 
                 <!-- Admin Account Settings -->
                 <div class="bg-card border border-card-border rounded-xl p-6 space-y-6">
-                    <div class="border-b border-zinc-800 pb-3">
-                        <h3 class="text-lg font-bold text-white">ความปลอดภัยบัญชีผู้ดูแล</h3>
-                        <p class="text-xs text-zinc-400">แก้ไขข้อมูลบัญชีของคุณ หรือเพิ่มผู้ดูแลระบบคนใหม่</p>
+                    <div class="border-b border-zinc-200 pb-3">
+                        <h3 class="text-lg font-bold text-zinc-805">ความปลอดภัยบัญชีผู้ดูแล</h3>
+                        <p class="text-xs text-zinc-500">แก้ไขข้อมูลบัญชีของคุณ หรือเพิ่มผู้ดูแลระบบคนใหม่</p>
                     </div>
 
                     <!-- Update own profile -->
-                    <form @submit.prevent="updateProfile()" class="space-y-3 border-b border-zinc-800/80 pb-6">
-                        <h4 class="text-xs font-bold text-zinc-400 uppercase">อัปเดตข้อมูลของฉัน</h4>
+                    <form @submit.prevent="updateProfile()" class="space-y-3 border-b border-zinc-200 pb-6">
+                        <h4 class="text-xs font-bold text-zinc-505 uppercase">อัปเดตข้อมูลของฉัน</h4>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-xs font-semibold text-zinc-500 mb-1">ชื่อผู้ใช้ใหม่</label>
-                                <input type="text" x-model="profileForm.newUsername" :placeholder="adminUsername" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-purple-500 text-xs text-white" required>
+                                <input type="text" x-model="profileForm.newUsername" :placeholder="adminUsername" class="w-full bg-white border border-zinc-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-purple-500 text-xs text-zinc-850" required>
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-zinc-500 mb-1">รหัสผ่านใหม่</label>
-                                <input type="password" x-model="profileForm.newPassword" placeholder="••••••••" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-purple-500 text-xs text-white" required>
+                                <input type="password" x-model="profileForm.newPassword" placeholder="••••••••" class="w-full bg-white border border-zinc-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-purple-500 text-xs text-zinc-850" required>
                             </div>
                         </div>
                         <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-1.5 px-4 rounded text-xs transition">ยืนยันอัปเดตข้อมูล</button>
@@ -513,37 +669,36 @@
 
                     <!-- Register new admin -->
                     <form @submit.prevent="registerNewAdmin()" class="space-y-3">
-                        <h4 class="text-xs font-bold text-zinc-400 uppercase">เพิ่มผู้ดูแลระบบคนอื่น</h4>
+                        <h4 class="text-xs font-bold text-zinc-505 uppercase">เพิ่มผู้ดูแลระบบคนอื่น</h4>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-xs font-semibold text-zinc-500 mb-1">ชื่อผู้ใช้</label>
-                                <input type="text" x-model="newAdminForm.username" placeholder="ชื่อผู้ดูแลคนใหม่" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs text-white" required>
+                                <input type="text" x-model="newAdminForm.username" placeholder="ชื่อผู้ดูแลคนใหม่" class="w-full bg-white border border-zinc-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs text-zinc-850" required>
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-zinc-500 mb-1">รหัสผ่าน</label>
-                                <input type="password" x-model="newAdminForm.password" placeholder="••••••••" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs text-white" required>
+                                <input type="password" x-model="newAdminForm.password" placeholder="••••••••" class="w-full bg-white border border-zinc-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs text-zinc-850" required>
                             </div>
                         </div>
                         <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1.5 px-4 rounded text-xs transition">เพิ่มผู้ดูแลคนใหม่</button>
                     </form>
                 </div>
             </div>
-
             <!-- ==================== TAB 4: AUDIT LOGS ==================== -->
             <div x-show="currentTab === 'audit'" class="space-y-4">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h2 class="text-xl font-bold">ประวัติการอัปเดตระบบ</h2>
-                        <p class="text-xs text-zinc-400 mt-1">บันทึกทุกการเปลี่ยนแปลงโดยผู้ดูแลระบบ</p>
+                        <h2 class="text-xl font-bold text-zinc-800">ประวัติการอัปเดตระบบ</h2>
+                        <p class="text-xs text-zinc-505 mt-1">บันทึกทุกการเปลี่ยนแปลงโดยผู้ดูแลระบบ</p>
                     </div>
-                    <button @click="fetchAuditLogs()" class="bg-zinc-800 hover:bg-zinc-700 text-white font-semibold py-1.5 px-4 rounded-lg text-xs border border-zinc-700 transition">รีเฟรช</button>
+                    <button @click="fetchAuditLogs()" class="bg-zinc-50 hover:bg-zinc-100 text-zinc-700 font-semibold py-1.5 px-4 rounded-lg text-xs border border-zinc-300 transition">รีเฟรช</button>
                 </div>
 
                 <div class="bg-card border border-card-border rounded-xl overflow-hidden shadow-lg">
                     <div class="overflow-x-auto">
                         <table class="w-full text-left text-xs">
                             <thead>
-                                <tr class="bg-zinc-950 border-b border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider text-[10px]">
+                                <tr class="bg-zinc-50 border-b border-zinc-200 text-zinc-650 font-bold uppercase tracking-wider text-[10px]">
                                     <th class="p-4 w-48">วันเวลา</th>
                                     <th class="p-4 w-36">ผู้ดำเนินงาน</th>
                                     <th class="p-4">รายละเอียดการอัปเดต</th>
@@ -551,10 +706,10 @@
                             </thead>
                             <tbody>
                                 <template x-for="log in auditLogs" :key="log.id">
-                                    <tr class="border-b border-zinc-800/40 hover:bg-white/[0.01]">
-                                        <td class="p-4 text-zinc-400 text-[11px]" x-text="formatDate(log.timestamp)"></td>
-                                        <td class="p-4 font-bold text-purple-400 text-[11px]" x-text="log.admin_user"></td>
-                                        <td class="p-4 text-zinc-200 text-[11px]" x-text="log.action"></td>
+                                    <tr class="border-b border-zinc-200 hover:bg-zinc-50">
+                                        <td class="p-4 text-zinc-555 text-[11px]" x-text="formatDate(log.timestamp)"></td>
+                                        <td class="p-4 font-bold text-purple-600 text-[11px]" x-text="log.admin_user"></td>
+                                        <td class="p-4 text-zinc-700 text-[11px]" x-text="log.action"></td>
                                     </tr>
                                 </template>
                                 <template x-if="auditLogs.length === 0">
@@ -569,23 +724,23 @@
         </main>
 
         <!-- Footer -->
-        <footer class="bg-[#0e0e11] border-t border-zinc-900 py-5 text-center text-xs text-zinc-500 relative z-10">
+        <footer class="bg-zinc-50 border-t border-zinc-200 py-5 text-center text-xs text-zinc-500 relative z-10">
             <p>© 2026 checkorder Admin Panel. All rights reserved.</p>
         </footer>
     </div>
 
-    <!-- ==================== EDIT ORDER MODAL ==================== -->
-    <div x-show="editModalOpen" class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 backdrop-blur-sm" x-cloak @click.self="editModalOpen = false">
-        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-5" @click.stop>
-            <div class="border-b border-zinc-800 pb-3">
-                <h3 class="text-lg font-bold text-white">แก้ไขออเดอร์ #<span x-text="selectedOrder.id"></span></h3>
-                <p class="text-xs text-zinc-400">ปรับสถานะ เวลานับถอยหลัง และลำดับคิว</p>
+        <!-- ==================== EDIT ORDER MODAL ==================== -->
+    <div x-show="editModalOpen" class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm" x-cloak @click.self="editModalOpen = false">
+        <div class="bg-white border border-zinc-200 rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-5" @click.stop>
+            <div class="border-b border-zinc-200 pb-3">
+                <h3 class="text-lg font-bold text-zinc-850">แก้ไขออเดอร์ #<span x-text="selectedOrder.id"></span></h3>
+                <p class="text-xs text-zinc-500">จัดการสถานะ เวลารอคิว ลำดับคิว และหมายเหตุ</p>
             </div>
 
             <form @submit.prevent="saveOrderEdit()" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">สถานะสินค้า</label>
-                    <select x-model="selectedOrder.queue_status" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white">
+                    <label class="block text-xs font-semibold text-zinc-600 uppercase mb-2">สถานะสินค้า</label>
+                    <select x-model="selectedOrder.queue_status" class="w-full bg-white border border-zinc-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-zinc-800">
                         <option value="Pending">รอดำเนินการ (Pending)</option>
                         <option value="Processing">กำลังดำเนินการ (Processing)</option>
                         <option value="Completed">จัดส่งสำเร็จ (Completed)</option>
@@ -596,22 +751,121 @@
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">ปรับเวลารอสินค้า (นาที)</label>
-                        <input type="number" x-model="selectedOrder.override_minutes" placeholder="90" min="1" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white">
-                        <span class="text-[10px] text-zinc-500 mt-1 block">ตั้งค่าใหม่เป็น X นาทีนับจากตอนนี้</span>
+                        <label class="block text-xs font-semibold text-zinc-600 uppercase mb-2">เวลารอคิว (นาที)</label>
+                        <input type="number" x-model="selectedOrder.override_minutes" placeholder="90" min="1" class="w-full bg-white border border-zinc-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-zinc-800">
+                        <span class="text-[10px] text-zinc-505 mt-1 block">ตั้งค่าใหม่เป็น X นาทีนับจากตอนนี้</span>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">ลำดับคิว (Position)</label>
-                        <input type="number" x-model="selectedOrder.queue_position" min="0" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white">
+                        <label class="block text-xs font-semibold text-zinc-600 uppercase mb-2">ลำดับคิว</label>
+                        <input type="number" x-model="selectedOrder.queue_position" min="0" class="w-full bg-white border border-zinc-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-zinc-800">
                     </div>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-zinc-400 uppercase mb-2">หมายเหตุจากทีมงาน (Admin Notes)</label>
-                    <textarea x-model="selectedOrder.notes" class="w-full bg-black/40 border border-zinc-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white h-20 resize-none" placeholder="รายละเอียด เช่น เลขพัสดุ หรือข้อความชี้แจง..."></textarea>
+                    <label class="block text-xs font-semibold text-zinc-600 uppercase mb-2">หมายเหตุถึงลูกค้า</label>
+                    <textarea x-model="selectedOrder.notes" class="w-full bg-white border border-zinc-300 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-zinc-800 h-20 resize-none" placeholder="รายละเอียด เช่น เลขพัสดุ หรือข้อความชี้แจง..."></textarea>
                 </div>
                 <div class="flex justify-end gap-3 pt-2">
-                    <button type="button" @click="editModalOpen = false" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold py-2 px-5 rounded-lg text-xs transition">ยกเลิก</button>
+                    <button type="button" @click="editModalOpen = false" class="bg-zinc-100 hover:bg-zinc-200 text-zinc-700 border border-zinc-250 font-semibold py-2 px-5 rounded-lg text-xs transition">ยกเลิก</button>
                     <button type="submit" class="bg-primary hover:opacity-90 text-white font-semibold py-2 px-5 rounded-lg text-xs transition">บันทึกการแก้ไข</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== DELETE CONFIRM MODAL ==================== -->
+    <div x-show="deleteConfirmOpen" class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm" x-cloak @click.self="deleteConfirmOpen = false">
+        <div class="bg-white border border-zinc-200 rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-5 text-center" @click.stop>
+            <div class="w-12 h-12 bg-rose-50 border border-rose-100 rounded-full flex items-center justify-center mx-auto text-rose-500">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+            </div>
+            <div class="space-y-1">
+                <h3 class="text-base font-bold text-zinc-800">ยืนยันการลบออเดอร์</h3>
+                <p class="text-xs text-zinc-500">คุณแน่ใจหรือไม่ที่จะลบออเดอร์นี้ออกจากระบบคิว? การกระทำนี้ไม่สามารถย้อนกลับได้</p>
+            </div>
+            <div class="flex justify-center gap-3 pt-2">
+                <button type="button" @click="deleteConfirmOpen = false" class="bg-zinc-100 hover:bg-zinc-200 text-zinc-700 border border-zinc-250 font-semibold py-2 px-5 rounded-lg text-xs transition">ยกเลิก</button>
+                <button type="button" @click="confirmDeleteOrder()" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2 px-5 rounded-lg text-xs transition">ยืนยันการลบ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== BULK ACTIONS MODAL ==================== -->
+    <div x-show="bulkModalOpen" class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm" x-cloak @click.self="bulkModalOpen = false">
+        <div class="bg-white border border-zinc-200 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-5" @click.stop>
+            <div class="border-b border-zinc-200 pb-3">
+                <h3 class="text-lg font-bold text-zinc-800">แก้ไขหลายรายการพร้อมกัน (<span x-text="selectedOrderIds.length"></span> ออเดอร์)</h3>
+                <p class="text-xs text-zinc-500">เลือกหัวข้อที่ต้องการแก้ไขและกำหนดค่าใหม่ให้กับออเดอร์ทั้งหมดที่เลือก</p>
+            </div>
+
+            <form @submit.prevent="saveBulkEdit()" class="space-y-4">
+                <!-- Status -->
+                <div class="border border-zinc-100 rounded-lg p-3 space-y-2">
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="bulk-update-status" x-model="bulkForm.updateStatus" class="w-4 h-4 rounded text-primary border-zinc-300 focus:ring-0">
+                        <label for="bulk-update-status" class="text-xs font-bold text-zinc-700 cursor-pointer">ปรับสถานะ</label>
+                    </div>
+                    <div x-show="bulkForm.updateStatus">
+                        <select x-model="bulkForm.queue_status" class="w-full bg-white border border-zinc-300 rounded-lg py-2 px-3 text-xs text-zinc-800 focus:ring-primary focus:border-primary">
+                            <option value="Pending">รอดำเนินการ (Pending)</option>
+                            <option value="Processing">กำลังดำเนินการ (Processing)</option>
+                            <option value="Completed">จัดส่งสำเร็จ (Completed)</option>
+                            <option value="Failed">จัดส่งไม่สำเร็จ (Failed)</option>
+                            <option value="Cancelled">คำสั่งซื้อถูกยกเลิก (Cancelled)</option>
+                            <option value="Refunded">คำสั่งซื้อถูกยกเลิกและคืนเงิน (Refunded)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Wait time -->
+                <div class="border border-zinc-100 rounded-lg p-3 space-y-2">
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="bulk-update-time" x-model="bulkForm.updateWaitTime" class="w-4 h-4 rounded text-primary border-zinc-300 focus:ring-0">
+                        <label for="bulk-update-time" class="text-xs font-bold text-zinc-700 cursor-pointer">ปรับเวลารอคิว (นาที)</label>
+                    </div>
+                    <div x-show="bulkForm.updateWaitTime">
+                        <input type="number" x-model="bulkForm.override_minutes" placeholder="90" min="1" class="w-full bg-white border border-zinc-300 rounded-lg py-2 px-3 text-xs text-zinc-800 focus:ring-primary focus:border-primary">
+                    </div>
+                </div>
+
+                <!-- Queue Position -->
+                <div class="border border-zinc-100 rounded-lg p-3 space-y-2">
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="bulk-update-pos" x-model="bulkForm.updateQueuePos" class="w-4 h-4 rounded text-primary border-zinc-300 focus:ring-0">
+                        <label for="bulk-update-pos" class="text-xs font-bold text-zinc-700 cursor-pointer">ลำดับคิว / ลบคิว</label>
+                    </div>
+                    <div x-show="bulkForm.updateQueuePos" class="space-y-2">
+                        <div class="flex items-center space-x-4 text-[10px]">
+                            <label class="flex items-center space-x-1.5 cursor-pointer text-zinc-700">
+                                <input type="radio" name="bulkQueueType" value="set" x-model="bulkForm.queuePosType" class="text-primary focus:ring-0">
+                                <span>กำหนดลำดับใหม่</span>
+                            </label>
+                            <label class="flex items-center space-x-1.5 cursor-pointer text-rose-600 font-semibold">
+                                <input type="radio" name="bulkQueueType" value="clear" x-model="bulkForm.queuePosType" class="text-rose-600 focus:ring-0">
+                                <span>ลบคิว (ตั้งค่าคิวเป็น 0)</span>
+                            </label>
+                        </div>
+                        <div x-show="bulkForm.queuePosType === 'set'">
+                            <input type="number" x-model="bulkForm.queue_position" placeholder="กำหนดลำดับคิว..." min="0" class="w-full bg-white border border-zinc-300 rounded-lg py-2 px-3 text-xs text-zinc-800 focus:ring-primary focus:border-primary">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notes to Customer -->
+                <div class="border border-zinc-100 rounded-lg p-3 space-y-2">
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="bulk-update-notes" x-model="bulkForm.updateNotes" class="w-4 h-4 rounded text-primary border-zinc-300 focus:ring-0">
+                        <label for="bulk-update-notes" class="text-xs font-bold text-zinc-700 cursor-pointer">หมายเหตุถึงลูกค้า</label>
+                    </div>
+                    <div x-show="bulkForm.updateNotes">
+                        <textarea x-model="bulkForm.notes" class="w-full bg-white border border-zinc-300 rounded-lg py-2 px-3 text-xs text-zinc-800 h-16 resize-none focus:ring-primary focus:border-primary" placeholder="ข้อความหมายเหตุถึงลูกค้า..."></textarea>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" @click="bulkModalOpen = false" class="bg-zinc-100 hover:bg-zinc-200 text-zinc-700 border border-zinc-250 font-semibold py-2 px-5 rounded-lg text-xs transition">ยกเลิก</button>
+                    <button type="submit" class="bg-primary hover:opacity-90 text-white font-semibold py-2 px-5 rounded-lg text-xs transition">บันทึกการแก้ไขทั้งหมด</button>
                 </div>
             </form>
         </div>
@@ -621,9 +875,9 @@
     <div x-show="toast.show" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-4"
         class="fixed bottom-6 right-6 z-[60] max-w-sm" x-cloak>
         <div class="rounded-xl p-4 border shadow-2xl text-sm font-semibold flex items-center gap-3"
-            :class="toast.type === 'success' ? 'bg-emerald-950 border-emerald-500/30 text-emerald-300' : 'bg-rose-950 border-rose-500/30 text-rose-300'">
-            <svg x-show="toast.type === 'success'" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-            <svg x-show="toast.type === 'error'" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            :class="toast.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800'">
+            <svg x-show="toast.type === 'success'" class="w-5 h-5 flex-shrink-0 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+            <svg x-show="toast.type === 'error'" class="w-5 h-5 flex-shrink-0 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
             <span x-text="toast.message"></span>
         </div>
     </div>
@@ -650,9 +904,9 @@
                 statsPeriod: 'daily',
                 stats: { uptime: '0s', activeConcurrentTasks: 0, isGlobalKillSwitchActive: false, memoryUsage: null },
                 dashboardStats: {
-                    daily: { processing: 0, completed: 0, failed: 0, cancelled: 0 },
-                    weekly: { processing: 0, completed: 0, failed: 0, cancelled: 0 },
-                    monthly: { processing: 0, completed: 0, failed: 0, cancelled: 0 }
+                    daily: { processing: 0, completed: 0, failed: 0, cancelled: 0, refunded: 0 },
+                    weekly: { processing: 0, completed: 0, failed: 0, cancelled: 0, refunded: 0 },
+                    monthly: { processing: 0, completed: 0, failed: 0, cancelled: 0, refunded: 0 }
                 },
 
                 // Accounts state
@@ -663,7 +917,31 @@
                 orders: [],
                 orderSearchQuery: '',
                 editModalOpen: false,
-                selectedOrder: { id: null, queue_status: '', override_minutes: '', queue_position: 0 },
+                selectedOrder: { id: null, queue_status: '', override_minutes: '', queue_position: 0, notes: '' },
+
+                // Filters
+                filterStatus: 'all',
+                filterCategory: 'all',
+                showCompleted: false,
+
+                // Bulk edit selection state
+                selectedOrderIds: [],
+                bulkModalOpen: false,
+                bulkForm: {
+                    updateStatus: false,
+                    queue_status: 'Pending',
+                    updateWaitTime: false,
+                    override_minutes: '',
+                    updateQueuePos: false,
+                    queuePosType: 'set',
+                    queue_position: '',
+                    updateNotes: false,
+                    notes: ''
+                },
+
+                // Custom Delete Confirmation state
+                deleteConfirmOpen: false,
+                deleteOrderId: null,
 
                 // Settings state
                 settingsForm: { 
@@ -866,16 +1144,152 @@
                     } catch (e) { }
                 },
 
+                getProductCategory(productName) {
+                    if (!productName) return 'อื่นๆ';
+                    const name = productName.toLowerCase();
+                    if (name.includes('iphone') || name.includes('phone') || name.includes('ipad') || name.includes('samsung')) return 'มือถือ / แท็บเล็ต';
+                    if (name.includes('macbook') || name.includes('rtx') || name.includes('geforce') || name.includes('computer') || name.includes('intel') || name.includes('amd')) return 'คอมพิวเตอร์ / อุปกรณ์';
+                    if (name.includes('playstation') || name.includes('ps5') || name.includes('nintendo') || name.includes('switch') || name.includes('xbox') || name.includes('game')) return 'เกม / คอนโซล';
+                    return 'อื่นๆ';
+                },
+
                 filteredOrders() {
-                    if (!this.orderSearchQuery.trim()) {
-                        return this.orders;
+                    let list = this.orders;
+                    
+                    // Filter by search query
+                    if (this.orderSearchQuery.trim()) {
+                        const q = this.orderSearchQuery.toLowerCase();
+                        list = list.filter(order => 
+                            (order.username && order.username.toLowerCase().includes(q)) ||
+                            (order.product_name && order.product_name.toLowerCase().includes(q)) ||
+                            (order.buyer_notes && order.buyer_notes.toLowerCase().includes(q))
+                        );
                     }
-                    const q = this.orderSearchQuery.toLowerCase();
-                    return this.orders.filter(order => 
-                        (order.username && order.username.toLowerCase().includes(q)) ||
-                        (order.product_name && order.product_name.toLowerCase().includes(q)) ||
-                        (order.buyer_notes && order.buyer_notes.toLowerCase().includes(q))
-                    );
+                    
+                    // Filter by status
+                    if (this.filterStatus !== 'all') {
+                        list = list.filter(order => order.queue_status === this.filterStatus);
+                    } else {
+                        // Default hides completed/failed/cancelled/refunded unless showCompleted is toggled
+                        if (!this.showCompleted) {
+                            list = list.filter(order => ['Pending', 'Processing'].includes(order.queue_status));
+                        }
+                    }
+                    
+                    // Filter by Category
+                    if (this.filterCategory !== 'all') {
+                        list = list.filter(order => {
+                            const cat = this.getProductCategory(order.product_name);
+                            if (this.filterCategory === 'mobile') return cat === 'มือถือ / แท็บเล็ต';
+                            if (this.filterCategory === 'computer') return cat === 'คอมพิวเตอร์ / อุปกรณ์';
+                            if (this.filterCategory === 'game') return cat === 'เกม / คอนโซล';
+                            if (this.filterCategory === 'other') return cat === 'อื่นๆ';
+                            return true;
+                        });
+                    }
+                    
+                    return list;
+                },
+
+                toggleSelectAll(e) {
+                    if (e.target.checked) {
+                        this.selectedOrderIds = this.filteredOrders().map(o => o.id);
+                    } else {
+                        this.selectedOrderIds = [];
+                    }
+                },
+
+                openBulkModal() {
+                    this.bulkForm = {
+                        updateStatus: false,
+                        queue_status: 'Pending',
+                        updateWaitTime: false,
+                        override_minutes: '',
+                        updateQueuePos: false,
+                        queuePosType: 'set',
+                        queue_position: '',
+                        updateNotes: false,
+                        notes: ''
+                    };
+                    this.bulkModalOpen = true;
+                },
+
+                async saveBulkEdit() {
+                    this.bulkModalOpen = false;
+                    this.showToast('กำลังปรับปรุงข้อมูล...', 'info');
+                    
+                    let successCount = 0;
+                    for (const id of this.selectedOrderIds) {
+                        const order = this.orders.find(o => o.id === id);
+                        if (!order) continue;
+                        
+                        const payload = {};
+                        
+                        if (this.bulkForm.updateStatus) {
+                            payload.queue_status = this.bulkForm.queue_status;
+                        }
+                        if (this.bulkForm.updateWaitTime && this.bulkForm.override_minutes) {
+                            payload.override_minutes = this.bulkForm.override_minutes;
+                        }
+                        if (this.bulkForm.updateQueuePos) {
+                            if (this.bulkForm.queuePosType === 'clear') {
+                                payload.queue_position = 0;
+                                payload.queue_status = 'Cancelled';
+                            } else if (this.bulkForm.queue_position !== '') {
+                                payload.queue_position = this.bulkForm.queue_position;
+                            }
+                        }
+                        if (this.bulkForm.updateNotes) {
+                            payload.notes = this.bulkForm.notes;
+                        }
+                        
+                        try {
+                            const res = await fetch(`/api/admin/orders/${id}`, {
+                                method: 'PUT',
+                                headers: this.getHeaders(),
+                                body: JSON.stringify(payload)
+                            });
+                            if (res.ok) {
+                                const result = await res.json();
+                                if (result.success) successCount++;
+                            }
+                        } catch (e) {
+                            console.error(`Bulk update error for order #${id}:`, e);
+                        }
+                    }
+                    
+                    this.selectedOrderIds = [];
+                    this.showToast(`ปรับปรุงสำเร็จ ${successCount} รายการ`, 'success');
+                    this.fetchOrders();
+                    this.fetchDashboardStats();
+                    this.fetchAuditLogs();
+                },
+
+                openDeleteConfirm(id) {
+                    this.deleteOrderId = id;
+                    this.deleteConfirmOpen = true;
+                },
+
+                async confirmDeleteOrder() {
+                    const id = this.deleteOrderId;
+                    this.deleteConfirmOpen = false;
+                    try {
+                        const res = await fetch(`/api/admin/orders/${id}`, {
+                            method: 'DELETE',
+                            headers: this.getHeaders()
+                        });
+                        const result = await res.json();
+                        if (result.success) {
+                            this.showToast('ลบออเดอร์เรียบร้อย', 'success');
+                            this.fetchOrders();
+                            this.fetchDashboardStats();
+                            this.fetchAuditLogs();
+                        } else {
+                            this.showToast(result.message, 'error');
+                        }
+                    } catch (e) {
+                        this.showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+                    }
                 },
 
                 async fetchOrders() {
@@ -1130,6 +1544,9 @@
                 },
 
                 async deleteOrder(id) {
+                    this.openDeleteConfirm(id);
+                },
+                async deleteOrderOld(id) {
                     if (!confirm('ยืนยันที่จะลบออเดอร์นี้ออกจากระบบคิว?')) return;
                     try {
                         const res = await fetch(`/api/admin/orders/${id}`, {

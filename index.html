@@ -4,8 +4,94 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ตรวจสอบคิวคำสั่งซื้อ • Checkorder</title>
-    <!-- LINE Seed Sans TH Font -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontpkg/line-seed-sans-th@latest/index.css">
+    <!-- LINE Seed Sans (English + Thai) Font -->
+    <style>
+        @font-face {
+            font-family: 'LINE Seed Sans';
+            src: url('/fonts/LINESeedSans_Th.ttf') format('truetype');
+            font-weight: 300;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'LINE Seed Sans';
+            src: url('/fonts/LINESeedSans_Rg.ttf') format('truetype');
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'LINE Seed Sans';
+            src: url('/fonts/LINESeedSans_Bd.ttf') format('truetype');
+            font-weight: 500;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'LINE Seed Sans';
+            src: url('/fonts/LINESeedSans_Bd.ttf') format('truetype');
+            font-weight: 700;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'LINE Seed Sans';
+            src: url('/fonts/LINESeedSans_XBd.ttf') format('truetype');
+            font-weight: 800;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'LINE Seed Sans';
+            src: url('/fonts/LINESeedSans_He.ttf') format('truetype');
+            font-weight: 900;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: 'LINE Seed Sans TH';
+            src: url('/fonts/LINESeedSansTH_Th.ttf') format('truetype');
+            font-weight: 300;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'LINE Seed Sans TH';
+            src: url('/fonts/LINESeedSansTH_Rg.ttf') format('truetype');
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'LINE Seed Sans TH';
+            src: url('/fonts/LINESeedSansTH_Bd.ttf') format('truetype');
+            font-weight: 500;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'LINE Seed Sans TH';
+            src: url('/fonts/LINESeedSansTH_Bd.ttf') format('truetype');
+            font-weight: 700;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'LINE Seed Sans TH';
+            src: url('/fonts/LINESeedSansTH_XBd.ttf') format('truetype');
+            font-weight: 800;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'LINE Seed Sans TH';
+            src: url('/fonts/LINESeedSansTH_He.ttf') format('truetype');
+            font-weight: 900;
+            font-style: normal;
+            font-display: swap;
+        }
+    </style>
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -14,7 +100,7 @@
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ["'LINE Seed Sans TH'", 'sans-serif'],
+                        sans: ["'LINE Seed Sans'", "'LINE Seed Sans TH'", 'sans-serif'],
                     },
                     colors: {
                         primary: {
@@ -37,8 +123,8 @@
     <!-- Alpine.js CDN -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
-        body {
-            font-family: 'LINE Seed Sans TH', sans-serif;
+        body, input, select, textarea, button {
+            font-family: 'LINE Seed Sans', 'LINE Seed Sans TH', sans-serif;
             transition: background-color 0.3s ease, color 0.3s ease;
         }
         /* Custom scrollbar */
