@@ -10,6 +10,7 @@ const { HttpsProxyAgent } = require('https-proxy-agent');
 const winston = require('winston');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const admin = require('firebase-admin');
 require('winston-daily-rotate-file');
 
 // Cheerio HTML DOM Scraper Setup (Ultra-fast light weight parser for Rukcom/Shared Hosting)
@@ -37,6 +38,25 @@ const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 8080;
 const JWT_SECRET = process.env.JWT_SECRET || 'checkorder-admin-secret-2026';
+
+// ==========================================
+// 🟢 1. ดึงไฟล์กุญแจมาตั้งค่าเชื่อมต่อ Firebase & 2. เรียกใช้งานฐานข้อมูล Firestore
+// ==========================================
+let firestoreDb = null;
+try {
+    const serviceAccount = require('./serviceAccountKey.json');
+    admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+    });
+    firestoreDb = admin.firestore();
+    console.log('[Firebase] Firestore initialized successfully with serviceAccountKey.json.');
+} catch (fbError) {
+    if (admin.apps.length > 0) {
+        firestoreDb = admin.firestore();
+    } else {
+        console.error(`[Firebase Initialization Error]: ${fbError.message}`);
+    }
+}
 
 // ==========================================
 // 5. Developer Centralized Logging (Winston Setup)
@@ -2308,6 +2328,151 @@ async function fetchTargetOrdersForUser(searchedUsername) {
 }
 
 // ==========================================
+// FIREBASE FIRESTORE DATABASE MIRRORING FUNCTIONS & BACKGROUND WORKER
+// ==========================================
+
+async function mirrorUserOrdersToFirestore(username) {
+    if (!firestoreDb) {
+        logger.error('[Firebase] Firestore DB not initialized. Skipping mirror.');
+        return;
+    }
+    const cleanUsername = username.trim();
+    logger.info(`[Background Scraper] Mirroring orders for user "${cleanUsername}" to Firestore...`);
+
+    // Tier 1: Try Cheerio HTML Scraper
+    let remoteOrders = await scrapeLiveOrdersWithCheerio(cleanUsername);
+
+    // Tier 2: Try Puppeteer Scraper
+    if (remoteOrders === null) {
+        remoteOrders = await scrapeLiveOrdersWithPuppeteer(cleanUsername);
+    }
+
+    // Tier 3: Fallback to Mock or Direct API
+    if (remoteOrders === null) {
+        const isLocalHost = TARGET_BASE_URL.includes('localhost') || TARGET_BASE_URL.includes('127.0.0.1');
+        const ordersEndpoint = isLocalHost
+            ? `${TARGET_BASE_URL}/api/target-mock/orders?username=${encodeURIComponent(cleanUsername)}`
+            : `${TARGET_BASE_URL}/api/orders?username=${encodeURIComponent(cleanUsername)}`;
+
+        const headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+        };
+        if (!isLocalHost) {
+            headers['Cookie'] = await getTargetCookies();
+        } else {
+            const token = await getSystemBotToken();
+            headers['Cookie'] = `session_id=${token}`;
+        }
+        const response = await axios.get(ordersEndpoint, { headers, timeout: 10000 });
+        if (response.data && response.data.success && Array.isArray(response.data.data)) {
+            remoteOrders = response.data.data;
+        }
+    }
+
+    if (remoteOrders && Array.isArray(remoteOrders)) {
+        const now = new Date().toISOString();
+        remoteOrders.sort((a, b) => new Date(a.purchase_time || now) - new Date(b.purchase_time || now));
+
+        const batch = firestoreDb.batch();
+        const activeIds = [];
+        let activeOrderIndex = 0;
+
+        remoteOrders.forEach((remoteOrder) => {
+            const resolved = resolveAppProductDetails(remoteOrder.product_name, remoteOrder.product_image);
+            const isTerminal = ['Completed', 'Failed', 'Cancelled', 'Refunded'].includes(remoteOrder.queue_status);
+            let queuePos = 0;
+            if (!isTerminal) {
+                activeOrderIndex++;
+                queuePos = activeOrderIndex;
+            }
+
+            const waitMinutes = queuePos * 2;
+            const purchaseTimeDate = new Date(remoteOrder.purchase_time || now);
+            const waitTimeTarget = isTerminal ? null : new Date(purchaseTimeDate.getTime() + waitMinutes * 60 * 1000).toISOString();
+
+            let finalStatus = remoteOrder.queue_status;
+            if (finalStatus === 'Processing' || finalStatus === 'Pending') {
+                finalStatus = queuePos === 1 ? 'Processing' : 'Pending';
+            }
+
+            const orderId = remoteOrder.order_id || `${cleanUsername}_${remoteOrder.product_name}_${remoteOrder.purchase_time}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+            activeIds.push(orderId);
+
+            const docRef = firestoreDb.collection('orders').doc(orderId);
+            batch.set(docRef, {
+                order_id: orderId,
+                username: remoteOrder.username || cleanUsername,
+                product_name: remoteOrder.product_name || resolved.product_name,
+                product_image: resolved.product_image || null,
+                queue_position: queuePos,
+                queue_status: finalStatus,
+                estimated_wait_time: isTerminal ? 'จัดส่งสำเร็จแล้ว' : `ประมาณ ${waitMinutes} นาที`,
+                notes: remoteOrder.notes || 'ดึงและซิงค์ข้อมูลจากเว็บต้นทางเรียบร้อยแล้ว',
+                buyer_notes: remoteOrder.buyer_notes || '',
+                purchase_time: remoteOrder.purchase_time || now,
+                wait_time_target: waitTimeTarget,
+                last_updated: now
+            });
+        });
+
+        await batch.commit();
+        logger.info(`[Background Scraper] Successfully mirrored ${remoteOrders.length} orders to Firestore for user "${cleanUsername}"`);
+
+        // Stale order cleanup
+        const snapshot = await firestoreDb.collection('orders')
+            .where('username', '==', cleanUsername)
+            .get();
+
+        const deleteBatch = firestoreDb.batch();
+        let deleteCount = 0;
+        snapshot.forEach((doc) => {
+            if (!activeIds.includes(doc.id)) {
+                deleteBatch.delete(doc.ref);
+                deleteCount++;
+            }
+        });
+
+        if (deleteCount > 0) {
+            await deleteBatch.commit();
+            logger.info(`[Background Scraper] Deleted ${deleteCount} stale orders from Firestore for user "${cleanUsername}"`);
+        }
+    } else {
+        throw new Error('No orders found or failed to fetch orders from source.');
+    }
+}
+
+function startBackgroundScraperWorker() {
+    logger.info('[Background Worker] Starting continuous scraper loop running every 60 seconds...');
+    
+    setInterval(async () => {
+        try {
+            db.all("SELECT username FROM accounts WHERE status = 'active'", [], async (err, rows) => {
+                if (err) {
+                    logger.error(`[Background Worker Error] Failed to fetch active accounts from SQLite: ${err.message}`);
+                    return;
+                }
+                
+                if (!rows || rows.length === 0) {
+                    logger.info('[Background Worker] No active accounts to scrape in this cycle.');
+                    return;
+                }
+                
+                logger.info(`[Background Worker] Starting continuous scrape cycle for ${rows.length} active account(s)...`);
+                for (const row of rows) {
+                    try {
+                        await mirrorUserOrdersToFirestore(row.username);
+                    } catch (scrapeError) {
+                        logger.error(`[Background Worker Error] Failed to mirror orders for user "${row.username}": ${scrapeError.message}`);
+                    }
+                }
+            });
+        } catch (globalCycleError) {
+            logger.error(`[Background Worker Global Error] Error in scraper cycle: ${globalCycleError.message}`);
+        }
+    }, 60000);
+}
+
+// ==========================================
 // 8. Server Resource Monitor
 // ==========================================
 app.get('/api/admin/system-stats', (req, res) => {
@@ -2364,7 +2529,7 @@ function filterPublicOrders(orders) {
 // REST API endpoint: Check Queue Status (Public Endpoint)
 app.get('/api/check-queue', (req, res) => {
     // Check if queue service is active
-    db.get("SELECT value FROM system_settings WHERE key = 'is_queue_active'", [], (err, setting) => {
+    db.get("SELECT value FROM system_settings WHERE key = 'is_queue_active'", [], async (err, setting) => {
         if (!err && setting && setting.value === '0') {
             // Service is closed
             db.get("SELECT value FROM system_settings WHERE key = 'closed_message'", [], (err2, msgSetting) => {
@@ -2384,48 +2549,69 @@ app.get('/api/check-queue', (req, res) => {
             return res.status(400).json({ success: false, message: 'กรุณาระบุชื่อผู้ใช้งาน' });
         }
 
-        const now = Date.now();
-        const userKey = username.toLowerCase();
-        const lastTime = lastScrapeTime[userKey] || 0;
-        if (now - lastTime < 30000) {
-            logger.info(`[API] Returning cached orders for "${username}" (last scraped ${((now - lastTime)/1000).toFixed(1)}s ago)`);
-            db.all("SELECT * FROM orders WHERE LOWER(username) = LOWER(?) ORDER BY purchase_time DESC", [username], (err, orders) => {
-                if (err) {
-                    logger.error(err.message);
-                    return res.status(500).json({ success: false, message: 'Database error' });
-                }
-                return res.json({
-                    success: true,
-                    account_exists: true,
-                    data: filterPublicOrders(orders)
-                });
-            });
-            return;
+        if (!firestoreDb) {
+            return res.status(500).json({ success: false, message: 'Firebase Firestore not initialized' });
         }
 
-        logger.info(`[API] Bot scanning orders for searched user: "${username}"`);
-        lastScrapeTime[userKey] = now;
-
-        // Bot uses TEST4455 system credentials to scan target site for user orders
-        fetchTargetOrdersForUser(username).finally(() => {
-            db.all("SELECT * FROM orders WHERE LOWER(username) = LOWER(?) ORDER BY purchase_time DESC", [username], (err, orders) => {
-                if (err) {
-                    logger.error(err.message);
-                    return res.status(500).json({ success: false, message: 'Database error' });
+        try {
+            logger.info(`[API] Fetching orders from Firestore for searched user: "${username}"`);
+            
+            // Query Firestore orders collection where username matches case-insensitively
+            const snapshot = await firestoreDb.collection('orders').get();
+            const matchedOrders = [];
+            
+            snapshot.forEach(doc => {
+                const orderData = doc.data();
+                if (orderData.username && orderData.username.toLowerCase() === username.toLowerCase()) {
+                    matchedOrders.push(orderData);
                 }
-
-                broadcastLog(username, 'info', `คิวถูกตรวจสอบ: สแกนพบบอกรายการพรีออเดอร์ทั้งหมด ${orders ? orders.length : 0} รายการ`);
-
-                updateQueueFromTarget(username);
-
-                return res.json({
-                    success: true,
-                    account_exists: true,
-                    data: filterPublicOrders(orders)
-                });
             });
-        });
+
+            // Sort matchedOrders by purchase_time DESC
+            matchedOrders.sort((a, b) => new Date(b.purchase_time) - new Date(a.purchase_time));
+
+            broadcastLog(username, 'info', `คิวถูกตรวจสอบจากฐานข้อมูล Mirror (Firestore): พบบอกรายการพรีออเดอร์ทั้งหมด ${matchedOrders.length} รายการ`);
+
+            return res.json({
+                success: true,
+                account_exists: matchedOrders.length > 0,
+                data: filterPublicOrders(matchedOrders)
+            });
+        } catch (error) {
+            logger.error(`[API Check Queue Error]: ${error.message}`);
+            return res.status(500).json({ success: false, message: 'Database error reading from Firestore' });
+        }
     });
+});
+
+// REST API endpoint: Check Single Order status by orderId (Public Endpoint)
+app.get('/api/check-order/:orderId', async (req, res) => {
+    const orderId = req.params.orderId ? req.params.orderId.trim() : '';
+    if (!orderId) {
+        return res.status(400).json({ success: false, message: 'กรุณาระบุหมายเลขคำสั่งซื้อ (orderId)' });
+    }
+
+    if (!firestoreDb) {
+        return res.status(500).json({ success: false, message: 'Firebase Firestore not initialized' });
+    }
+
+    try {
+        logger.info(`[API] Fetching single order from Firestore for order ID: "${orderId}"`);
+        const docRef = firestoreDb.collection('orders').doc(orderId);
+        const doc = await docRef.get();
+        
+        if (!doc.exists) {
+            return res.status(404).json({ success: false, message: 'ไม่พบหมายเลขคำสั่งซื้อนี้ในระบบ' });
+        }
+
+        return res.json({
+            success: true,
+            data: doc.data()
+        });
+    } catch (error) {
+        logger.error(`[API Check Order Error]: ${error.message}`);
+        return res.status(500).json({ success: false, message: 'Database error reading from Firestore' });
+    }
 });
 
 async function updateQueueFromTarget(username) {
@@ -2477,6 +2663,9 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // Reload pending scheduled tasks on bootup
 reloadScheduledTasks();
+
+// Start Continuous Background Scraper Worker
+startBackgroundScraperWorker();
 
 // Start Server
 server.listen(PORT, '0.0.0.0', () => {

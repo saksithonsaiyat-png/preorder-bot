@@ -3,3 +3,4 @@ checkorder.db
 *.log
 .gemini/
 logs/
+serviceAccountKey.json
