@@ -2442,7 +2442,7 @@ async function mirrorUserOrdersToFirestore(username) {
 }
 
 function startBackgroundScraperWorker() {
-    logger.info('[Background Worker] Starting continuous scraper loop running every 60 seconds...');
+    logger.info('[Background Worker] Starting continuous scraper loop running every 180 seconds...');
     
     setInterval(async () => {
         try {
@@ -2469,7 +2469,7 @@ function startBackgroundScraperWorker() {
         } catch (globalCycleError) {
             logger.error(`[Background Worker Global Error] Error in scraper cycle: ${globalCycleError.message}`);
         }
-    }, 60000);
+    }, 180000);
 }
 
 // ==========================================
