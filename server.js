@@ -1381,8 +1381,20 @@ app.get('/api/target-mock/orders', (req, res) => {
         ]
     };
 
-    const userKey = searchedUsername.toLowerCase();
-    let ordersForUser = mockOrderDatabase[userKey];
+    const userKey = searchedUsername ? searchedUsername.toLowerCase() : '';
+    let ordersForUser = userKey ? mockOrderDatabase[userKey] : null;
+
+    if (!userKey) {
+        const allOrders = [];
+        Object.entries(mockOrderDatabase).forEach(([uname, orders]) => {
+            orders.forEach(o => allOrders.push({ ...o, username: uname }));
+        });
+        return res.json({
+            success: true,
+            user: 'ALL',
+            data: allOrders
+        });
+    }
 
     // Fallback: If user is not in exact mock dict, return empty list instead of generating random preorders
     if (!ordersForUser) {
@@ -1596,7 +1608,8 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
         return null;
     }
     const { username, password } = SYSTEM_BOT_CREDENTIALS;
-    broadcastLog(searchedUsername, 'info', `[Cheerio Scraper] เริ่มต้นอ่านโครงสร้าง HTML/CSS หน้าบ้านของ "${searchedUsername}" จากเว็บต้นทาง (${TARGET_BASE_URL})...`);
+    const logUser = searchedUsername && searchedUsername.trim() ? `ของ "${searchedUsername}"` : 'ทั้งหมดทุกรายการ';
+    broadcastLog(searchedUsername || 'System', 'info', `[Cheerio Scraper] เริ่มต้นอ่านโครงสร้าง HTML/CSS หน้าบ้าน${logUser} จากเว็บต้นทาง (${TARGET_BASE_URL})...`);
 
     const isLocalHost = TARGET_BASE_URL.includes('localhost') || TARGET_BASE_URL.includes('127.0.0.1');
 
@@ -1610,8 +1623,8 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
 
         while (hasMore && pageIndex < maxPages) {
             const ordersPageUrl = isLocalHost
-                ? `http://localhost:${PORT}/api/target-mock/orders?username=${encodeURIComponent(searchedUsername)}`
-                : `${TARGET_BASE_URL}/manager/orders?page=${pageIndex + 1}&ps=100&q=${encodeURIComponent(searchedUsername)}&sf=1`;
+                ? (searchedUsername && searchedUsername.trim() ? `http://localhost:${PORT}/api/target-mock/orders?username=${encodeURIComponent(searchedUsername)}` : `http://localhost:${PORT}/api/target-mock/orders`)
+                : (searchedUsername && searchedUsername.trim() ? `${TARGET_BASE_URL}/manager/orders?page=${pageIndex + 1}&ps=50&q=${encodeURIComponent(searchedUsername)}&sf=1` : `${TARGET_BASE_URL}/manager/orders?page=${pageIndex + 1}&ps=50&sf=1`);
 
             logger.info(`[Cheerio Scraper] Requesting Page ${pageIndex} URL: ${ordersPageUrl}`);
 
@@ -1751,11 +1764,13 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
                         parsedUser = parts.slice(1).join(' ').trim();
                     }
 
-                    // Skip row if it doesn't match the searched username
-                    const userLower = parsedUser.toLowerCase();
-                    const searchLower = searchedUsername.toLowerCase();
-                    if (userLower !== searchLower && !userLower.includes(searchLower)) {
-                        return;
+                    // Skip row if searchedUsername is specified and doesn't match
+                    if (searchedUsername && searchedUsername.trim()) {
+                        const userLower = parsedUser.toLowerCase();
+                        const searchLower = searchedUsername.toLowerCase().trim();
+                        if (userLower !== searchLower && !userLower.includes(searchLower)) {
+                            return;
+                        }
                     }
 
                     // 3. Status / สถานะ (Col 4, index 3)
@@ -1876,6 +1891,7 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
 
 function parseCookieStringToObjects(cookieStr, domain) {
     if (!cookieStr) return [];
+    const cleanDomain = (domain || '').replace(/^https?:\/\//, '').split(':')[0].trim();
     return cookieStr.split(';').map(pair => {
         const trimmed = pair.trim();
         if (!trimmed) return null;
@@ -1883,7 +1899,14 @@ function parseCookieStringToObjects(cookieStr, domain) {
         if (index === -1) return null;
         const name = trimmed.substring(0, index).trim();
         const value = trimmed.substring(index + 1).trim();
-        return { name, value, domain };
+        return {
+            name,
+            value,
+            url: `https://${cleanDomain}`,
+            domain: cleanDomain,
+            path: '/',
+            secure: true
+        };
     }).filter(Boolean);
 }
 
@@ -1928,7 +1951,9 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
             await browser.close();
             browser = null; // Prevent duplicate close in catch/finally
 
-            const mockOrdersUrl = `http://localhost:${PORT}/api/target-mock/orders?username=${encodeURIComponent(searchedUsername)}`;
+            const mockOrdersUrl = searchedUsername && searchedUsername.trim()
+                ? `http://localhost:${PORT}/api/target-mock/orders?username=${encodeURIComponent(searchedUsername)}`
+                : `http://localhost:${PORT}/api/target-mock/orders`;
             const response = await axios.get(mockOrdersUrl, {
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -1955,7 +1980,9 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
             }
 
             // Define target orders url for the first page scan
-            const initialTargetOrdersUrl = `${TARGET_BASE_URL}/manager/orders?page=1&ps=100&q=${encodeURIComponent(searchedUsername)}&sf=1`;
+            const initialTargetOrdersUrl = searchedUsername && searchedUsername.trim()
+                ? `${TARGET_BASE_URL}/manager/orders?page=1&ps=50&q=${encodeURIComponent(searchedUsername)}&sf=1`
+                : `${TARGET_BASE_URL}/manager/orders?page=1&ps=50&sf=1`;
             logger.info(`[Puppeteer Live] Navigating directly to orders URL: ${initialTargetOrdersUrl}`);
             
             // Try to navigate directly to orders page
@@ -2017,7 +2044,9 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
             const maxPages = 15; // Safeguard to prevent infinite loops
 
             while (hasMore && pageIndex < maxPages) {
-                const targetOrdersUrl = `${TARGET_BASE_URL}/manager/orders?page=${pageIndex + 1}&ps=100&q=${encodeURIComponent(searchedUsername)}&sf=1`;
+                const targetOrdersUrl = searchedUsername && searchedUsername.trim()
+                    ? `${TARGET_BASE_URL}/manager/orders?page=${pageIndex + 1}&ps=50&q=${encodeURIComponent(searchedUsername)}&sf=1`
+                    : `${TARGET_BASE_URL}/manager/orders?page=${pageIndex + 1}&ps=50&sf=1`;
                 
                 // For pageIndex > 0, we need to navigate to subsequent pages
                 if (pageIndex > 0) {
@@ -2086,11 +2115,13 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                             parsedUser = parts.slice(1).join(' ').trim();
                         }
 
-                        // Skip row if it doesn't match the searched username
-                        const userLower = parsedUser.toLowerCase();
-                        const searchLower = user.toLowerCase();
-                        if (userLower !== searchLower && !userLower.includes(searchLower)) {
-                            return;
+                        // Skip row only if searched user is specified and doesn't match
+                        if (user && user.trim()) {
+                            const userLower = parsedUser.toLowerCase();
+                            const searchLower = user.toLowerCase().trim();
+                            if (userLower !== searchLower && !userLower.includes(searchLower)) {
+                                return;
+                            }
                         }
 
                         // 3. Extract Status
@@ -2331,6 +2362,177 @@ async function fetchTargetOrdersForUser(searchedUsername) {
 // FIREBASE FIRESTORE DATABASE MIRRORING FUNCTIONS & BACKGROUND WORKER
 // ==========================================
 
+async function mirrorAllOrdersToFirestore() {
+    if (!firestoreDb) {
+        logger.error('[Firebase] Firestore DB not initialized. Skipping mirror.');
+        return;
+    }
+    logger.info('[Background Scraper] Scanning ALL customer orders from target site to Firebase & Database...');
+
+    // Tier 1: Try Cheerio HTML Scraper (Fetches all orders)
+    let remoteOrders = await scrapeLiveOrdersWithCheerio('');
+
+    // Tier 2: Try Puppeteer Scraper
+    if (remoteOrders === null) {
+        remoteOrders = await scrapeLiveOrdersWithPuppeteer('');
+    }
+
+    // Tier 3: Fallback to Mock or Direct API
+    if (remoteOrders === null) {
+        const isLocalHost = TARGET_BASE_URL.includes('localhost') || TARGET_BASE_URL.includes('127.0.0.1');
+        const ordersEndpoint = isLocalHost
+            ? `${TARGET_BASE_URL}/api/target-mock/orders`
+            : `${TARGET_BASE_URL}/api/orders`;
+
+        const headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+        };
+        if (!isLocalHost) {
+            headers['Cookie'] = await getTargetCookies();
+        } else {
+            const token = await getSystemBotToken();
+            headers['Cookie'] = `session_id=${token}`;
+        }
+        try {
+            const response = await axios.get(ordersEndpoint, { headers, timeout: 10000 });
+            if (response.data && response.data.success && Array.isArray(response.data.data)) {
+                remoteOrders = response.data.data;
+            }
+        } catch (apiErr) {
+            logger.error(`[Background Scraper API Error]: ${apiErr.message}`);
+        }
+    }
+
+    if (!remoteOrders || !Array.isArray(remoteOrders) || remoteOrders.length === 0) {
+        logger.warn('[Background Scraper] No orders returned from target website to mirror.');
+        return;
+    }
+
+    logger.info(`[Background Scraper] Successfully scraped ${remoteOrders.length} total orders from target site!`);
+    const now = new Date().toISOString();
+
+    // Group orders by username
+    const ordersByUser = {};
+    remoteOrders.forEach(order => {
+        const uname = (order.username || 'unknown').trim();
+        if (!ordersByUser[uname]) ordersByUser[uname] = [];
+        ordersByUser[uname].push(order);
+    });
+
+    const activeIds = [];
+    const batch = firestoreDb.batch();
+    let batchCount = 0;
+    let newUsersCount = 0;
+
+    // Fetch existing accounts to detect newly discovered users
+    const existingAccounts = await new Promise((resolve) => {
+        db.all("SELECT username FROM accounts", [], (err, rows) => {
+            if (err || !rows) return resolve(new Set());
+            resolve(new Set(rows.map(r => (r.username || '').toLowerCase())));
+        });
+    });
+
+    for (const [uname, userOrders] of Object.entries(ordersByUser)) {
+        const isNewUser = !existingAccounts.has(uname.toLowerCase());
+        if (isNewUser) {
+            newUsersCount++;
+            logger.info(`[Auto Discovery] Discovered NEW user from target site: "${uname}"`);
+        }
+
+        // 1. Auto-save discovered username into SQLite accounts table
+        db.run(
+            `INSERT INTO accounts (username, password, status, queue_position, queue_status, last_updated)
+             VALUES (?, '', 'active', 0, 'Processing', ?)
+             ON CONFLICT(username) DO UPDATE SET last_updated = excluded.last_updated`,
+            [uname, now]
+        );
+
+        // 2. Mirror user profile into Firebase Firestore "accounts" collection
+        const userDocRef = firestoreDb.collection('accounts').doc(uname);
+        batch.set(userDocRef, {
+            username: uname,
+            status: 'active',
+            order_count: userOrders.length,
+            is_new: isNewUser,
+            last_updated: now,
+            source: 'thewestern.rdcw.xyz'
+        }, { merge: true });
+
+        // Sort orders for this user by purchase_time ASC
+        userOrders.sort((a, b) => new Date(a.purchase_time || now) - new Date(b.purchase_time || now));
+
+        let activeOrderIndex = 0;
+        userOrders.forEach((remoteOrder) => {
+            const resolved = resolveAppProductDetails(remoteOrder.product_name, remoteOrder.product_image);
+            const isTerminal = ['Completed', 'Failed', 'Cancelled', 'Refunded'].includes(remoteOrder.queue_status);
+            let queuePos = 0;
+            if (!isTerminal) {
+                activeOrderIndex++;
+                queuePos = activeOrderIndex;
+            }
+
+            const waitMinutes = queuePos * 2;
+            const purchaseTimeDate = new Date(remoteOrder.purchase_time || now);
+            const waitTimeTarget = isTerminal ? null : new Date(purchaseTimeDate.getTime() + waitMinutes * 60 * 1000).toISOString();
+
+            let finalStatus = remoteOrder.queue_status;
+            if (finalStatus === 'Processing' || finalStatus === 'Pending') {
+                finalStatus = queuePos === 1 ? 'Processing' : 'Pending';
+            }
+
+            const rawKey = remoteOrder.order_id || `${uname}_${remoteOrder.product_name}_${remoteOrder.purchase_time}`;
+            const orderId = rawKey.replace(/[^a-zA-Z0-9_-]/g, '_');
+            activeIds.push(orderId);
+
+            const docData = {
+                order_id: orderId,
+                username: uname,
+                product_name: remoteOrder.product_name || resolved.product_name,
+                product_image: resolved.product_image || null,
+                queue_position: queuePos,
+                queue_status: finalStatus,
+                estimated_wait_time: isTerminal ? 'จัดส่งสำเร็จแล้ว' : `ประมาณ ${waitMinutes} นาที`,
+                notes: remoteOrder.notes || 'ดึงและซิงค์ข้อมูลจากเว็บต้นทางเรียบร้อยแล้ว',
+                buyer_notes: remoteOrder.buyer_notes || '',
+                purchase_time: remoteOrder.purchase_time || now,
+                wait_time_target: waitTimeTarget,
+                last_updated: now
+            };
+
+            // 3. Mirror order into Firebase Firestore "orders" collection
+            const docRef = firestoreDb.collection('orders').doc(orderId);
+            batch.set(docRef, docData);
+            batchCount++;
+
+            // 4. Mirror order into SQLite "orders" table
+            db.run(
+                `INSERT INTO orders (username, product_name, product_image, queue_position, queue_status, estimated_wait_time, notes, buyer_notes, purchase_time, wait_time_target, last_updated)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                    uname,
+                    docData.product_name,
+                    docData.product_image,
+                    queuePos,
+                    finalStatus,
+                    docData.estimated_wait_time,
+                    docData.notes,
+                    docData.buyer_notes,
+                    docData.purchase_time,
+                    waitTimeTarget,
+                    now
+                ]
+            );
+        });
+    }
+
+    if (batchCount > 0) {
+        await batch.commit();
+        logger.info(`[Background Scraper] Mirrored ${batchCount} orders and ${Object.keys(ordersByUser).length} accounts (New: ${newUsersCount}) into Firestore & SQLite!`);
+        broadcastLog('System', 'success', `[Auto Discovery] ดึง 50 รายการล่าสุดจากเว็บต้นทางสำเร็จ! พบบัญชีผู้ใช้ทั้งหมด ${Object.keys(ordersByUser).length} บัญชี (เป็นผู้ใช้ใหม่ ${newUsersCount} บัญชี) บันทึกลง database และ Firebase เรียบร้อยแล้ว`);
+        broadcastUpdate('orders');
+    }
+}
+
 async function mirrorUserOrdersToFirestore(username) {
     if (!firestoreDb) {
         logger.error('[Firebase] Firestore DB not initialized. Skipping mirror.');
@@ -2444,28 +2646,18 @@ async function mirrorUserOrdersToFirestore(username) {
 function startBackgroundScraperWorker() {
     logger.info('[Background Worker] Starting continuous scraper loop running every 180 seconds...');
     
+    // 🟢 Initial run immediately on server boot! (after 3s delay)
+    setTimeout(() => {
+        logger.info('[Background Worker] Executing initial boot sync of all orders...');
+        mirrorAllOrdersToFirestore().catch(err => {
+            logger.error(`[Background Worker Initial Run Error]: ${err.message}`);
+        });
+    }, 3000);
+
+    // Continuous scraper loop every 180 seconds
     setInterval(async () => {
         try {
-            db.all("SELECT username FROM accounts WHERE status = 'active'", [], async (err, rows) => {
-                if (err) {
-                    logger.error(`[Background Worker Error] Failed to fetch active accounts from SQLite: ${err.message}`);
-                    return;
-                }
-                
-                if (!rows || rows.length === 0) {
-                    logger.info('[Background Worker] No active accounts to scrape in this cycle.');
-                    return;
-                }
-                
-                logger.info(`[Background Worker] Starting continuous scrape cycle for ${rows.length} active account(s)...`);
-                for (const row of rows) {
-                    try {
-                        await mirrorUserOrdersToFirestore(row.username);
-                    } catch (scrapeError) {
-                        logger.error(`[Background Worker Error] Failed to mirror orders for user "${row.username}": ${scrapeError.message}`);
-                    }
-                }
-            });
+            await mirrorAllOrdersToFirestore();
         } catch (globalCycleError) {
             logger.error(`[Background Worker Global Error] Error in scraper cycle: ${globalCycleError.message}`);
         }
@@ -2567,8 +2759,23 @@ app.get('/api/check-queue', (req, res) => {
                 }
             });
 
-            // Sort matchedOrders by purchase_time DESC
-            matchedOrders.sort((a, b) => new Date(b.purchase_time) - new Date(a.purchase_time));
+            // If no orders found in cache for this user, attempt a live sync from source site
+            if (matchedOrders.length === 0) {
+                logger.info(`[API] No cached orders in Firestore for "${username}". Attempting live sync from source...`);
+                try {
+                    await mirrorUserOrdersToFirestore(username);
+                    const freshSnapshot = await firestoreDb.collection('orders').get();
+                    freshSnapshot.forEach(doc => {
+                        const orderData = doc.data();
+                        if (orderData.username && orderData.username.toLowerCase() === username.toLowerCase()) {
+                            matchedOrders.push(orderData);
+                        }
+                    });
+                    matchedOrders.sort((a, b) => new Date(b.purchase_time) - new Date(a.purchase_time));
+                } catch (liveErr) {
+                    logger.warn(`[API] Live sync attempt for "${username}": ${liveErr.message}`);
+                }
+            }
 
             broadcastLog(username, 'info', `คิวถูกตรวจสอบจากฐานข้อมูล Mirror (Firestore): พบบอกรายการพรีออเดอร์ทั้งหมด ${matchedOrders.length} รายการ`);
 
