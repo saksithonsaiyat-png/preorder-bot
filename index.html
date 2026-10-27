@@ -178,7 +178,7 @@
     <header class="border-b sticky top-0 z-40" :class="darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-slate-200'">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-3">
-                <span class="text-xl font-bold tracking-tight" :style="'color: ' + colorShopName + '; font-family: \'LINE Seed Sans\', \'LINE Seed Sans TH\', sans-serif !important; letter-spacing: -0.03em;'" x-text="shopName || 'Checkorder'">Checkorder</span>
+                <span class="text-xl font-bold tracking-tight" :style="'color: ' + colorShopName + '; font-family: \'LINE Seed Sans\', \'LINE Seed Sans TH\', sans-serif !important; letter-spacing: -0.03em;'">Checkorder</span>
             </div>
             
             <div class="flex items-center space-x-3">
@@ -632,7 +632,7 @@
                 serviceClosed: false,
                 serviceClosedMessage: '',
                 currentTime: Date.now(),
-                shopName: '',
+                shopName: 'Checkorder',
                 heroTitle: '',
                 heroSubtitle: '',
                 colorShopName: '#4A7BF8',
@@ -689,7 +689,7 @@
                             if (data.success) {
                                 this.serviceClosed = !data.data.is_queue_active;
                                 this.serviceClosedMessage = data.data.closed_message || 'ระบบปิดปรับปรุงชั่วคราว';
-                                this.shopName = data.data.shop_name || 'Checkorder';
+                                this.shopName = 'Checkorder';
                                 this.heroTitle = data.data.hero_title || 'ตรวจสอบคิวจองสินค้าพรีออเดอร์';
                                 this.heroSubtitle = data.data.hero_subtitle || 'กรอกชื่อบัญชีที่ลงทะเบียนไว้กับเว็บต้นทาง (thewestern.rdcw.xyz) เพื่อให้บอทเข้าไปสแกนดึงออเดอร์มาแสดงผล';
                                 this.colorShopName = data.data.color_shop_name || '#4A7BF8';
