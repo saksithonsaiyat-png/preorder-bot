@@ -5,89 +5,108 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ตรวจสอบคิวคำสั่งซื้อ • Checkorder</title>
     <!-- LINE Seed Sans (English + Thai) Font -->
+    <!-- LINE Seed Sans (English + Thai) Font -->
     <style>
+        /* LINE Seed Sans (English / Numbers) */
         @font-face {
             font-family: 'LINE Seed Sans';
-            src: url('/fonts/LINESeedSans_Th.ttf') format('truetype');
+            src: url('fonts/LINESeedSans_Th.ttf') format('truetype'), url('/fonts/LINESeedSans_Th.ttf') format('truetype');
             font-weight: 300;
             font-style: normal;
             font-display: swap;
         }
         @font-face {
             font-family: 'LINE Seed Sans';
-            src: url('/fonts/LINESeedSans_Rg.ttf') format('truetype');
+            src: url('fonts/LINESeedSans_Rg.ttf') format('truetype'), url('/fonts/LINESeedSans_Rg.ttf') format('truetype');
             font-weight: 400;
             font-style: normal;
             font-display: swap;
         }
         @font-face {
             font-family: 'LINE Seed Sans';
-            src: url('/fonts/LINESeedSans_Bd.ttf') format('truetype');
+            src: url('fonts/LINESeedSans_Bd.ttf') format('truetype'), url('/fonts/LINESeedSans_Bd.ttf') format('truetype');
             font-weight: 500;
             font-style: normal;
             font-display: swap;
         }
         @font-face {
             font-family: 'LINE Seed Sans';
-            src: url('/fonts/LINESeedSans_Bd.ttf') format('truetype');
+            src: url('fonts/LINESeedSans_Bd.ttf') format('truetype'), url('/fonts/LINESeedSans_Bd.ttf') format('truetype');
             font-weight: 700;
             font-style: normal;
             font-display: swap;
         }
         @font-face {
             font-family: 'LINE Seed Sans';
-            src: url('/fonts/LINESeedSans_XBd.ttf') format('truetype');
+            src: url('fonts/LINESeedSans_XBd.ttf') format('truetype'), url('/fonts/LINESeedSans_XBd.ttf') format('truetype');
             font-weight: 800;
             font-style: normal;
             font-display: swap;
         }
         @font-face {
             font-family: 'LINE Seed Sans';
-            src: url('/fonts/LINESeedSans_He.ttf') format('truetype');
+            src: url('fonts/LINESeedSans_He.ttf') format('truetype'), url('/fonts/LINESeedSans_He.ttf') format('truetype');
             font-weight: 900;
             font-style: normal;
             font-display: swap;
         }
 
+        /* LINE Seed Sans TH (Thai + Latin) */
         @font-face {
             font-family: 'LINE Seed Sans TH';
-            src: url('/fonts/LINESeedSansTH_Th.ttf') format('truetype');
+            src: url('fonts/LINESeedSansTH_Th.ttf') format('truetype'), url('/fonts/LINESeedSansTH_Th.ttf') format('truetype');
             font-weight: 300;
             font-style: normal;
             font-display: swap;
         }
         @font-face {
             font-family: 'LINE Seed Sans TH';
-            src: url('/fonts/LINESeedSansTH_Rg.ttf') format('truetype');
+            src: url('fonts/LINESeedSansTH_Rg.ttf') format('truetype'), url('/fonts/LINESeedSansTH_Rg.ttf') format('truetype');
             font-weight: 400;
             font-style: normal;
             font-display: swap;
         }
         @font-face {
             font-family: 'LINE Seed Sans TH';
-            src: url('/fonts/LINESeedSansTH_Bd.ttf') format('truetype');
+            src: url('fonts/LINESeedSansTH_Bd.ttf') format('truetype'), url('/fonts/LINESeedSansTH_Bd.ttf') format('truetype');
             font-weight: 500;
             font-style: normal;
             font-display: swap;
         }
         @font-face {
             font-family: 'LINE Seed Sans TH';
-            src: url('/fonts/LINESeedSansTH_Bd.ttf') format('truetype');
+            src: url('fonts/LINESeedSansTH_Bd.ttf') format('truetype'), url('/fonts/LINESeedSansTH_Bd.ttf') format('truetype');
             font-weight: 700;
             font-style: normal;
             font-display: swap;
         }
         @font-face {
             font-family: 'LINE Seed Sans TH';
-            src: url('/fonts/LINESeedSansTH_XBd.ttf') format('truetype');
+            src: url('fonts/LINESeedSansTH_XBd.ttf') format('truetype'), url('/fonts/LINESeedSansTH_XBd.ttf') format('truetype');
             font-weight: 800;
             font-style: normal;
             font-display: swap;
         }
         @font-face {
             font-family: 'LINE Seed Sans TH';
-            src: url('/fonts/LINESeedSansTH_He.ttf') format('truetype');
+            src: url('fonts/LINESeedSansTH_He.ttf') format('truetype'), url('/fonts/LINESeedSansTH_He.ttf') format('truetype');
             font-weight: 900;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        /* Line Seed Unified Alias */
+        @font-face {
+            font-family: 'Line Seed';
+            src: url('fonts/LINESeedSansTH_Rg.ttf') format('truetype'), url('/fonts/LINESeedSansTH_Rg.ttf') format('truetype');
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Line Seed';
+            src: url('fonts/LINESeedSansTH_Bd.ttf') format('truetype'), url('/fonts/LINESeedSansTH_Bd.ttf') format('truetype');
+            font-weight: 700;
             font-style: normal;
             font-display: swap;
         }
@@ -100,7 +119,7 @@
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ["'LINE Seed Sans'", "'LINE Seed Sans TH'", 'sans-serif'],
+                        sans: ["'LINE Seed Sans'", "'LINE Seed Sans TH'", "'Line Seed'", 'sans-serif'],
                     },
                     colors: {
                         primary: {
@@ -123,8 +142,13 @@
     <!-- Alpine.js CDN -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
+        *, *::before, *::after {
+            font-family: 'LINE Seed Sans', 'LINE Seed Sans TH', 'Line Seed', sans-serif !important;
+        }
+        html, body, input, select, textarea, button, h1, h2, h3, h4, h5, h6, p, span, a, label, div {
+            font-family: 'LINE Seed Sans', 'LINE Seed Sans TH', 'Line Seed', sans-serif !important;
+        }
         body, input, select, textarea, button {
-            font-family: 'LINE Seed Sans', 'LINE Seed Sans TH', sans-serif;
             transition: background-color 0.3s ease, color 0.3s ease;
         }
         /* Custom scrollbar */
@@ -154,7 +178,7 @@
     <header class="border-b sticky top-0 z-40" :class="darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-slate-200'">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-3">
-                <span class="text-xl font-medium" :style="'color: ' + colorShopName + '; letter-spacing: -0.04em;'">Checkorder</span>
+                <span class="text-xl font-bold tracking-tight" :style="'color: ' + colorShopName + '; font-family: \'LINE Seed Sans\', \'LINE Seed Sans TH\', sans-serif !important; letter-spacing: -0.03em;'" x-text="shopName || 'Checkorder'">Checkorder</span>
             </div>
             
             <div class="flex items-center space-x-3">
