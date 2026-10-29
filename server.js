@@ -1245,24 +1245,17 @@ function resolveAppProductDetails(productName, targetImage) {
     };
 }
 
-function generateCompletedMockOrders(username, count = 50) {
+function generateCompletedMockOrders(username, count = 10) {
     const products = [
+        { name: 'MANGO TV 31 DAYS [พรีออเดอร์] MANGO TV 31 DAYS - [VIP]', sub: 'MANGO TV 31 DAYS - [VIP]' },
         { name: 'CH7ON 30 DAYS [พรีออเดอร์] CH7ON 30 DAYS', sub: 'CH7ON 30 DAYS' },
-        { name: 'MANGO TV 31 DAYS [พรีออเดอร์] MANGO TV 31 DAYS - [SVIP]', sub: 'MANGO TV 31 DAYS - [SVIP]' },
-        { name: 'HBO MAX [พรีออเดอร์] MAX 30 DAYS [PREMIUM]', sub: 'MAX 30 DAYS [PREMIUM]' },
-        { name: 'MONOMAX [พรีออเดอร์] ENTERTAINMENT 30 DAYS', sub: 'ENTERTAINMENT 30 DAYS' },
-        { name: 'NETFLIX [พรีออเดอร์] PREMIUM 4K ULTRA HD 30 DAYS', sub: 'PREMIUM 4K 30 DAYS' },
-        { name: 'YOUKU 31 DAYS [พรีออเดอร์] YOUKU VIP 31 DAYS', sub: 'YOUKU VIP 31 DAYS' },
-        { name: 'VIU [พรีออเดอร์] VIU PREMIUM 30 DAYS', sub: 'VIU PREMIUM 30 DAYS' },
-        { name: 'YOUTUBE [พรีออเดอร์] YOUTUBE PREMIUM 30 DAYS (เมลร้าน)', sub: 'PREMIUM 30 DAYS' },
-        { name: 'DISNEY+ [พรีออเดอร์] DISNEY+ HOTSTAR 30 DAYS', sub: 'HOTSTAR 30 DAYS' },
-        { name: 'SPOTIFY [พรีออเดอร์] SPOTIFY INDIVIDUAL 30 DAYS', sub: 'INDIVIDUAL 30 DAYS' }
+        { name: 'MANGO TV 31 DAYS [พรีออเดอร์] MANGO TV 31 DAYS - [SVIP]', sub: 'MANGO TV 31 DAYS - [SVIP]' }
     ];
     const results = [];
     const baseTime = new Date('2026-10-29T12:00:00.000Z').getTime();
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < Math.min(count, 10); i++) {
         const prod = products[i % products.length];
-        const purchaseTime = new Date(baseTime - (i + 1) * 3600 * 1000 * 3).toISOString();
+        const purchaseTime = new Date(baseTime - (i + 1) * 3600 * 1000 * 2).toISOString();
         results.push({
             order_id: `COMPLETED_${username}_${i + 1}`,
             product_name: prod.name,
@@ -1290,50 +1283,41 @@ app.get('/api/target-mock/orders', (req, res) => {
     const mockOrderDatabase = {
         'korea669': [
             {
-                order_id: 'korea669_ch7on_1',
+                order_id: 'korea669_ch7on_comp_1',
                 product_name: 'CH7ON 30 DAYS [พรีออเดอร์] CH7ON 30 DAYS',
-                queue_position: 1,
-                queue_status: 'Processing',
-                estimated_wait_time: 'ประมาณ 2 นาที',
+                queue_position: 0,
+                queue_status: 'Completed',
+                estimated_wait_time: 'จัดส่งสำเร็จแล้ว',
                 notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ CH7ON จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
                 buyer_notes: 'CH7ON 30 DAYS',
                 purchase_time: '2026-10-29T06:36:00.000Z',
-                wait_time_target: waitTarget
+                wait_time_target: null,
+                username: 'korea669'
             },
             {
-                order_id: 'korea669_ch7on_2',
+                order_id: 'korea669_ch7on_comp_2',
                 product_name: 'CH7ON 30 DAYS [พรีออเดอร์] CH7ON 30 DAYS',
-                queue_position: 2,
-                queue_status: 'Processing',
-                estimated_wait_time: 'ประมาณ 4 นาที',
+                queue_position: 0,
+                queue_status: 'Completed',
+                estimated_wait_time: 'จัดส่งสำเร็จแล้ว',
                 notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ CH7ON จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
                 buyer_notes: 'CH7ON 30 DAYS',
                 purchase_time: '2026-10-29T06:36:00.000Z',
-                wait_time_target: waitTarget
+                wait_time_target: null,
+                username: 'korea669'
             },
             {
-                order_id: 'korea669_mango_1',
+                order_id: 'korea669_mango_comp_3',
                 product_name: 'MANGO TV 31 DAYS [พรีออเดอร์] MANGO TV 31 DAYS - [SVIP]',
-                queue_position: 3,
-                queue_status: 'Pending',
-                estimated_wait_time: 'ประมาณ 6 นาที',
+                queue_position: 0,
+                queue_status: 'Completed',
+                estimated_wait_time: 'จัดส่งสำเร็จแล้ว',
                 notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MANGO TV จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
                 buyer_notes: 'MANGO TV 31 DAYS - [SVIP]',
                 purchase_time: '2026-10-29T06:36:00.000Z',
-                wait_time_target: waitTarget
-            },
-            {
-                order_id: 'korea669_mango_2',
-                product_name: 'MANGO TV 31 DAYS [พรีออเดอร์] MANGO TV 31 DAYS - [SVIP]',
-                queue_position: 4,
-                queue_status: 'Pending',
-                estimated_wait_time: 'ประมาณ 8 นาที',
-                notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MANGO TV จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
-                buyer_notes: 'MANGO TV 31 DAYS - [SVIP]',
-                purchase_time: '2026-10-29T06:36:00.000Z',
-                wait_time_target: waitTarget
-            },
-            ...generateCompletedMockOrders('korea669', 50)
+                wait_time_target: null,
+                username: 'korea669'
+            }
         ],
         'brickblock': [
             {
@@ -1345,7 +1329,8 @@ app.get('/api/target-mock/orders', (req, res) => {
                 notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MANGO TV [SVIP] จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
                 buyer_notes: 'MANGO TV 31 DAYS - [SVIP]',
                 purchase_time: '2026-10-29T12:36:00.000Z',
-                wait_time_target: waitTarget
+                wait_time_target: waitTarget,
+                username: 'brickblock'
             },
             {
                 order_id: 'brickblock_mango_svip_2',
@@ -1356,7 +1341,8 @@ app.get('/api/target-mock/orders', (req, res) => {
                 notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MANGO TV [SVIP] จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
                 buyer_notes: 'MANGO TV 31 DAYS - [SVIP]',
                 purchase_time: '2026-10-29T12:36:00.000Z',
-                wait_time_target: waitTarget
+                wait_time_target: waitTarget,
+                username: 'brickblock'
             },
             {
                 order_id: 'brickblock_mango_svip_3',
@@ -1367,42 +1353,57 @@ app.get('/api/target-mock/orders', (req, res) => {
                 notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MANGO TV [SVIP] จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
                 buyer_notes: 'MANGO TV 31 DAYS - [SVIP]',
                 purchase_time: '2026-10-29T12:36:00.000Z',
-                wait_time_target: waitTarget
+                wait_time_target: waitTarget,
+                username: 'brickblock'
             },
             {
-                order_id: 'brickblock_mango_vip_4',
+                order_id: 'brickblock_mango_vip_comp_1',
                 product_name: 'MANGO TV 31 DAYS [พรีออเดอร์] MANGO TV 31 DAYS - [VIP]',
-                queue_position: 4,
-                queue_status: 'Pending',
-                estimated_wait_time: 'ประมาณ 8 นาที',
+                queue_position: 0,
+                queue_status: 'Completed',
+                estimated_wait_time: 'จัดส่งสำเร็จแล้ว',
                 notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MANGO TV [VIP] จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
                 buyer_notes: 'MANGO TV 31 DAYS - [VIP]',
                 purchase_time: '2026-10-29T12:36:00.000Z',
-                wait_time_target: waitTarget
+                wait_time_target: null,
+                username: 'brickblock'
             },
             {
-                order_id: 'brickblock_mango_vip_5',
+                order_id: 'brickblock_mango_vip_comp_2',
                 product_name: 'MANGO TV 31 DAYS [พรีออเดอร์] MANGO TV 31 DAYS - [VIP]',
-                queue_position: 5,
-                queue_status: 'Pending',
-                estimated_wait_time: 'ประมาณ 10 นาที',
+                queue_position: 0,
+                queue_status: 'Completed',
+                estimated_wait_time: 'จัดส่งสำเร็จแล้ว',
                 notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MANGO TV [VIP] จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
                 buyer_notes: 'MANGO TV 31 DAYS - [VIP]',
                 purchase_time: '2026-10-29T12:36:00.000Z',
-                wait_time_target: waitTarget
+                wait_time_target: null,
+                username: 'brickblock'
             },
             {
-                order_id: 'brickblock_mango_vip_6',
+                order_id: 'brickblock_mango_vip_comp_3',
                 product_name: 'MANGO TV 31 DAYS [พรีออเดอร์] MANGO TV 31 DAYS - [VIP]',
-                queue_position: 6,
-                queue_status: 'Pending',
-                estimated_wait_time: 'ประมาณ 12 นาที',
+                queue_position: 0,
+                queue_status: 'Completed',
+                estimated_wait_time: 'จัดส่งสำเร็จแล้ว',
                 notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MANGO TV [VIP] จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
                 buyer_notes: 'MANGO TV 31 DAYS - [VIP]',
                 purchase_time: '2026-10-29T12:36:00.000Z',
-                wait_time_target: waitTarget
+                wait_time_target: null,
+                username: 'brickblock'
             },
-            ...generateCompletedMockOrders('brickblock', 50)
+            {
+                order_id: 'brickblock_mango_vip_comp_4',
+                product_name: 'MANGO TV 31 DAYS [พรีออเดอร์] MANGO TV 31 DAYS - [VIP]',
+                queue_position: 0,
+                queue_status: 'Completed',
+                estimated_wait_time: 'จัดส่งสำเร็จแล้ว',
+                notes: 'เชื่อมต่อและซิงค์ข้อมูลรายการพรีออเดอร์ MANGO TV [VIP] จากเว็บต้นทาง (thewestern.rdcw.xyz) สำเร็จ',
+                buyer_notes: 'MANGO TV 31 DAYS - [VIP]',
+                purchase_time: '2026-10-29T12:36:00.000Z',
+                wait_time_target: null,
+                username: 'brickblock'
+            }
         ],
         'polarxsz': [
             {
@@ -1505,7 +1506,7 @@ app.get('/api/target-mock/orders', (req, res) => {
                 purchase_time: '2026-07-25T23:43:00.000Z',
                 wait_time_target: waitTarget
             },
-            ...generateCompletedMockOrders('polarxsz', 50)
+            ...generateCompletedMockOrders('polarxsz', 10)
         ],
         'nameisnont': [
             {
@@ -1518,7 +1519,7 @@ app.get('/api/target-mock/orders', (req, res) => {
                 purchase_time: '2026-07-25T20:19:00.000Z',
                 wait_time_target: waitTarget
             },
-            ...generateCompletedMockOrders('nameisnont', 50)
+            ...generateCompletedMockOrders('nameisnont', 10)
         ],
         'ln212224': [
             {
@@ -1531,7 +1532,7 @@ app.get('/api/target-mock/orders', (req, res) => {
                 purchase_time: '2026-07-25T19:14:00.000Z',
                 wait_time_target: waitTarget
             },
-            ...generateCompletedMockOrders('ln212224', 50)
+            ...generateCompletedMockOrders('ln212224', 10)
         ],
         'test4455': [
             {
@@ -1544,7 +1545,7 @@ app.get('/api/target-mock/orders', (req, res) => {
                 purchase_time: '2026-07-24T21:56:02.000Z',
                 wait_time_target: waitTarget
             },
-            ...generateCompletedMockOrders('test4455', 50)
+            ...generateCompletedMockOrders('test4455', 10)
         ]
     };
 
@@ -1576,7 +1577,7 @@ app.get('/api/target-mock/orders', (req, res) => {
                 purchase_time: new Date().toISOString(),
                 wait_time_target: waitTarget
             },
-            ...generateCompletedMockOrders(searchedUsername, 50)
+            ...generateCompletedMockOrders(searchedUsername, 10)
         ];
     }
 
@@ -1803,7 +1804,7 @@ async function scrapeLiveOrdersWithCheerio(searchedUsername) {
         while (hasMore && pageIndex < maxPages) {
             const ordersPageUrl = isLocalHost
                 ? (searchedUsername && searchedUsername.trim() ? `http://localhost:${PORT}/api/target-mock/orders?username=${encodeURIComponent(searchedUsername)}` : `http://localhost:${PORT}/api/target-mock/orders`)
-                : (searchedUsername && searchedUsername.trim() ? `${TARGET_BASE_URL}/manager/orders?page=${pageIndex + 1}&ps=50&q=${encodeURIComponent(searchedUsername)}&sf=1` : `${TARGET_BASE_URL}/manager/orders?page=${pageIndex + 1}&ps=50&sf=1`);
+                : (searchedUsername && searchedUsername.trim() ? `${TARGET_BASE_URL}/manager/orders?page=${pageIndex + 1}&ps=10&q=${encodeURIComponent(searchedUsername)}&sf=1` : `${TARGET_BASE_URL}/manager/orders?page=${pageIndex + 1}&ps=10&sf=1`);
 
             logger.info(`[Cheerio Scraper] Requesting Page ${pageIndex} URL: ${ordersPageUrl}`);
 
@@ -2160,7 +2161,7 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                 }
             }
 
-            const initialTargetOrdersUrl = `${TARGET_BASE_URL}/manager/orders?ps=50`;
+            const initialTargetOrdersUrl = `${TARGET_BASE_URL}/manager/orders`;
             logger.info(`[Puppeteer Live] Navigating directly to orders URL: ${initialTargetOrdersUrl}`);
             
             await page.goto(initialTargetOrdersUrl, { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {});
@@ -2194,110 +2195,31 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                 await page.goto(initialTargetOrdersUrl, { waitUntil: 'networkidle2', timeout: 25000 }).catch(() => {});
             }
 
-            // Universal DOM Order Extractor function for both Tables and Card-based Lists
-            const domExtractorFunction = (userFilter, isForceCompleted) => {
+            // Universal DOM Order Extractor function for Table Rows & Responsive Cards
+            const domExtractorFunction = () => {
                 const results = [];
                 const seenKeys = new Set();
+                const trs = Array.from(document.querySelectorAll('table tbody tr')).filter(r => !r.querySelector('th'));
 
-                // 1. Check Table Rows
-                const tableRows = Array.from(document.querySelectorAll('table tbody tr')).filter(r => !r.querySelector('th'));
-                
-                // 2. Check Card / Div Containers (matching the Western responsive layout)
-                const allDivs = Array.from(document.querySelectorAll('div, li, article'));
-                const cardContainers = allDivs.filter(el => {
-                    const text = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
-                    const hasStatus = text.includes('รอดำเนินการ') || text.includes('กำลังดำเนินการ') || 
-                                      text.includes('เสร็จสิ้น') || text.includes('สำเร็จ') || 
-                                      text.includes('Pending') || text.includes('Processing') || text.includes('Completed') ||
-                                      text.includes('ยกเลิก') || text.includes('คืนเงิน');
-                    const hasOrderBadge = text.includes('[พรีออเดอร์]') || text.includes('DAYS') || text.includes('VIP') || text.includes('ออเดอร์');
-                    return hasStatus && hasOrderBadge && el.children.length >= 2 && el.children.length <= 15 && el.offsetHeight > 50 && el.offsetHeight < 450;
-                });
-
-                const elementsToParse = tableRows.length > 0 && tableRows.some(r => r.querySelectorAll('td').length >= 3) ? tableRows : cardContainers;
-
-                elementsToParse.forEach((el, idx) => {
-                    const fullText = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
+                trs.forEach((tr, idx) => {
+                    const fullText = (tr.innerText || tr.textContent || '').replace(/\s+/g, ' ').trim();
                     if (!fullText) return;
 
-                    // A. Extract structured elements directly (cards and table rows)
-                    const tds = el.querySelectorAll('td');
-                    let parsedUser = '';
-                    let parsedProduct = '';
-                    let parsedProductImage = '';
-                    let parsedDate = '';
-                    let parsedNotes = '-';
-                    let parsedStatus = isForceCompleted ? 'Completed' : 'Processing';
+                    const h1 = tr.querySelector('h1')?.textContent.trim();
+                    const prod = tr.querySelector('p.line-clamp-2')?.textContent.trim() || tr.querySelector('a')?.textContent.trim();
+                    const subtitle = tr.querySelector('p.text-subtitle')?.textContent.trim();
+                    const fullProd = subtitle && prod && !prod.includes(subtitle) ? `${prod} ${subtitle}` : (prod || 'สินค้าพรีออเดอร์');
 
-                    // 1. Username: exact extraction from h1 element
-                    const userH1 = el.querySelector('h1') || el.querySelector('.font-medium');
-                    if (userH1 && userH1.textContent.trim().length <= 30 && !userH1.textContent.includes('พรีออเดอร์')) {
-                        parsedUser = userH1.textContent.trim();
-                    }
-
-                    // 2. Product Name & Image
-                    const prodEl = el.querySelector('p.line-clamp-2') || el.querySelector('a[href*="/manager/orders/"]');
-                    if (prodEl) {
-                        parsedProduct = prodEl.textContent.trim();
-                    }
-                    const imgEl = el.querySelector('img');
-                    if (imgEl && imgEl.src) {
-                        parsedProductImage = imgEl.src;
-                    }
-
-                    // 3. Status from title attribute or badge text
-                    const statusBadge = el.querySelector('[title]');
+                    const statusBadge = tr.querySelector('[title]');
+                    let parsedStatus = 'Processing';
                     if (statusBadge) {
-                        const t = statusBadge.getAttribute('title').toUpperCase();
-                        if (t.includes('PENDING')) parsedStatus = 'Pending';
-                        else if (t.includes('PROCESSING')) parsedStatus = 'Processing';
-                        else if (t.includes('COMPLETED')) parsedStatus = 'Completed';
-                        else if (t.includes('CANCEL')) parsedStatus = 'Cancelled';
-                        else if (t.includes('REFUND')) parsedStatus = 'Refunded';
-                    }
-
-                    // 4. Notes
-                    const noteEl = el.querySelector('.wrap-anywhere span');
-                    if (noteEl) {
-                        parsedNotes = noteEl.textContent.trim() || '-';
-                    }
-
-                    // 5. Multi-column table fallback if tds length >= 3
-                    if (tds.length >= 3) {
-                        if (!parsedProduct && tds[1]) parsedProduct = tds[1].textContent.replace(/\s+/g, ' ').trim();
-                        if (!parsedUser && tds[2]) {
-                            const uText = tds[2].textContent.replace(/\s+/g, ' ').trim();
-                            const parts = uText.split(/\s+/);
-                            parsedUser = parts.length > 1 && parts[0].length === 1 ? parts.slice(1).join(' ').trim() : uText;
-                        }
-                        if (tds[3] && !statusBadge) {
-                            const stText = tds[3].textContent;
-                            if (stText.includes('รอดำเนินการ') || stText.includes('Pending')) parsedStatus = 'Pending';
-                            else if (stText.includes('กำลังดำเนินการ') || stText.includes('Processing')) parsedStatus = 'Processing';
-                            else if (stText.includes('เสร็จสิ้น') || stText.includes('สำเร็จ') || stText.includes('Completed')) parsedStatus = 'Completed';
-                            else if (stText.includes('ยกเลิก') || stText.includes('Cancelled')) parsedStatus = 'Cancelled';
-                            else if (stText.includes('คืนเงิน') || stText.includes('Refunded')) parsedStatus = 'Refunded';
-                        }
-                        if (parsedNotes === '-' && tds[4]) parsedNotes = tds[4].textContent.trim() || '-';
-                        if (!parsedDate && tds[5]) parsedDate = tds[5].textContent.trim();
-                    }
-
-                    // Fallback username parsing if still empty
-                    if (!parsedUser) {
-                        const match = fullText.match(/\b([a-zA-Z0-9_.@-]{3,25})\b/);
-                        if (match) parsedUser = match[1];
-                    }
-
-                    // Skip row if searched user is specified and doesn't match
-                    if (userFilter && userFilter.trim()) {
-                        const uLower = (parsedUser || '').toLowerCase();
-                        const sLower = userFilter.toLowerCase().trim();
-                        if (uLower !== sLower && !uLower.includes(sLower) && !fullText.toLowerCase().includes(sLower)) {
-                            return;
-                        }
-                    }
-
-                    if (!parsedStatus || parsedStatus === 'Processing') {
+                        const t = (statusBadge.getAttribute('title') || statusBadge.textContent || '').toUpperCase();
+                        if (t.includes('PENDING') || t.includes('รอดำเนินการ')) parsedStatus = 'Pending';
+                        else if (t.includes('PROCESSING') || t.includes('กำลังดำเนินการ')) parsedStatus = 'Processing';
+                        else if (t.includes('COMPLETED') || t.includes('เสร็จสิ้น') || t.includes('สำเร็จ')) parsedStatus = 'Completed';
+                        else if (t.includes('CANCEL') || t.includes('ยกเลิก')) parsedStatus = 'Cancelled';
+                        else if (t.includes('REFUND') || t.includes('คืนเงิน')) parsedStatus = 'Refunded';
+                    } else {
                         if (fullText.includes('คืนเงิน') || fullText.includes('REFUNDED')) parsedStatus = 'Refunded';
                         else if (fullText.includes('ยกเลิก') || fullText.includes('CANCELLED')) parsedStatus = 'Cancelled';
                         else if (fullText.includes('ไม่สำเร็จ') || fullText.includes('FAILED')) parsedStatus = 'Failed';
@@ -2306,63 +2228,31 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                         else if (fullText.includes('กำลังดำเนินการ') || fullText.includes('PROCESSING')) parsedStatus = 'Processing';
                     }
 
-                    if (!parsedProduct) {
-                        const titleEl = el.querySelector('h1, h2, h3, .font-bold, .font-medium, a[href*="/manager/orders/"]') ||
-                                        Array.from(el.querySelectorAll('div, p, span')).find(n => (n.textContent || '').includes('[พรีออเดอร์]'));
-                        if (titleEl) {
-                            parsedProduct = titleEl.textContent.trim();
-                        } else {
-                            const prodMatch = fullText.match(/([A-Za-z0-9\s]+\s+DAYS\s*\[พรีออเดอร์\]|[A-Za-z0-9\s]+\[พรีออเดอร์\])/);
-                            parsedProduct = prodMatch ? prodMatch[1].trim() : 'สินค้าพรีออเดอร์';
-                        }
-                    }
+                    const dateMatch = fullText.match(/(\d{1,2}\s+(?:มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)\s+\d{4}(?:\s+เวลา\s+\d{1,2}:\d{2})?)/);
+                    const parsedDate = dateMatch ? dateMatch[1] : '';
 
-                    // D. Extract Date
-                    if (!parsedDate) {
-                        const dateMatch = fullText.match(/(\d{1,2}\s+(?:มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม|\S+)\s+\d{4}(?:\s+เวลา\s+\d{1,2}:\d{2})?)/);
-                        if (dateMatch) {
-                            parsedDate = dateMatch[1];
-                        }
-                    }
+                    const img = tr.querySelector('img')?.src || null;
+                    const notes = tr.querySelector('.wrap-anywhere span')?.textContent.trim() || '-';
+                    const user = h1 || 'unknown';
 
-                    // E. Extract Notes
-                    if (parsedNotes === '-') {
-                        if (fullText.includes('ไม่มีหมายเหตุ')) {
-                            parsedNotes = '-';
-                        } else {
-                            const noteMatch = fullText.match(/หมายเหตุ[:\s]*([^\n]+)/);
-                            if (noteMatch) parsedNotes = noteMatch[1].trim();
-                        }
-                    }
-
-                    // Order ID
-                    let orderId = el.id || '';
-                    if (!orderId) {
-                        const chk = el.querySelector('button[role="checkbox"], input[type="checkbox"]');
-                        if (chk) orderId = chk.id || chk.value || '';
-                    }
-                    if (!orderId) {
-                        const link = el.querySelector('a[href*="/manager/orders/"]');
-                        if (link) {
-                            const m = link.href.match(/\/manager\/orders\/([a-zA-Z0-9]+)/);
-                            if (m) orderId = m[1];
-                        }
-                    }
-                    if (!orderId) {
-                        orderId = `${parsedUser || 'user'}_${parsedProduct}_${parsedDate || idx}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+                    let orderId = tr.id || '';
+                    const chk = tr.querySelector('button[role="checkbox"], input[type="checkbox"]');
+                    if (chk && chk.id) orderId = chk.id;
+                    if (!orderId || orderId === 'on') {
+                        orderId = `${user}_${fullProd}_${parsedDate || idx}`.replace(/[^a-zA-Z0-9_-]/g, '_');
                     }
 
                     if (!seenKeys.has(orderId)) {
                         seenKeys.add(orderId);
                         results.push({
                             order_id: orderId,
-                            product_name: parsedProduct,
-                            product_image: parsedProductImage || null,
+                            product_name: fullProd,
+                            product_image: img,
                             queue_status: parsedStatus,
-                            notes: parsedNotes,
-                            buyer_notes: parsedProduct,
+                            notes: notes,
+                            buyer_notes: fullProd,
                             raw_created_at: parsedDate || new Date().toISOString(),
-                            username: parsedUser || (userFilter || 'korea669')
+                            username: user
                         });
                     }
                 });
@@ -2374,9 +2264,9 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
 
             // 1. Extract Active (Pending/Processing) Orders
             logger.info(`[Puppeteer Live] Extracting active preorder items from current view...`);
-            await page.waitForSelector('table tbody tr, .order-card, div', { timeout: 10000 }).catch(() => {});
+            await page.waitForSelector('table tbody tr', { timeout: 10000 }).catch(() => {});
             
-            const activePageOrders = await page.evaluate(domExtractorFunction, null, false);
+            const activePageOrders = await page.evaluate(domExtractorFunction);
             if (Array.isArray(activePageOrders)) {
                 activePageOrders.forEach(o => {
                     const key = o.order_id || `${o.product_name}|${o.username}|${o.raw_created_at}`;
@@ -2388,7 +2278,7 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                 logger.info(`[Puppeteer Live] Scraped ${activePageOrders.length} active orders.`);
             }
 
-            // 2. Extract Latest 50 Completed Orders by clicking "แสดงออเดอร์ที่เสร็จสิ้น"
+            // 2. Extract Latest 10 Completed Orders by clicking "แสดงออเดอร์ที่เสร็จสิ้น"
             logger.info(`[Puppeteer Live] Locating and toggling 'แสดงออเดอร์ที่เสร็จสิ้น' checkbox...`);
             try {
                 const toggled = await page.evaluate(() => {
@@ -2406,13 +2296,16 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                 });
 
                 if (toggled) {
-                    logger.info(`[Puppeteer Live] Checkbox clicked. Waiting for 50 completed orders to render...`);
-                    await new Promise(resolve => setTimeout(resolve, 3000));
+                    logger.info(`[Puppeteer Live] Checkbox clicked. Waiting for 10 completed orders to render...`);
+                    await new Promise(resolve => setTimeout(resolve, 4000));
 
-                    const completedOrders = await page.evaluate(domExtractorFunction, null, true);
-                    if (Array.isArray(completedOrders) && completedOrders.length > 0) {
-                        logger.info(`[Puppeteer Live] Scraped ${completedOrders.length} completed orders.`);
-                        completedOrders.slice(0, 50).forEach(o => {
+                    const allCompletedOnPage = await page.evaluate(domExtractorFunction);
+                    if (Array.isArray(allCompletedOnPage) && allCompletedOnPage.length > 0) {
+                        const completedOnly = allCompletedOnPage
+                            .filter(o => ['Completed', 'Cancelled', 'Refunded'].includes(o.queue_status))
+                            .slice(0, 10);
+                        logger.info(`[Puppeteer Live] Scraped ${completedOnly.length} completed orders (max 10).`);
+                        completedOnly.forEach(o => {
                             const key = o.order_id || `${o.product_name}|${o.username}|${o.raw_created_at}`;
                             if (!seenOrderKeys.has(key)) {
                                 seenOrderKeys.add(key);
@@ -2493,7 +2386,7 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                 );
             }
 
-            broadcastLog(searchedUsername, 'success', `[Puppeteer Live] สแกนสำเร็จ! พบบอกรายการของ "${searchedUsername || 'ทุกผู้ใช้'}" ทั้งหมด ${finalOrders.length} รายการ (รวมรายการรอดำเนินการและ 50 รายการเสร็จสิ้น)`);
+            broadcastLog(searchedUsername, 'success', `[Puppeteer Live] สแกนสำเร็จ! พบบอกรายการของ "${searchedUsername || 'ทุกผู้ใช้'}" ทั้งหมด ${finalOrders.length} รายการ (รวมรายการรอดำเนินการและ 10 รายการเสร็จสิ้น)`);
             return finalOrders;
         }
     } catch (puppeteerErr) {
@@ -2509,17 +2402,24 @@ async function fetchTargetOrdersForUser(searchedUsername) {
     broadcastLog(searchedUsername, 'info', `[Bot Scraper] บอทเริ่มสแกนหาคำสั่งซื้อของ "${searchedUsername}" ในเว็บต้นทาง (${TARGET_BASE_URL})...`);
 
     try {
-        // Tier 1: Try High-Speed Cheerio HTML/CSS DOM Scraper (Works 100% on Rukcom Shared Hosting)
-        let remoteOrders = await scrapeLiveOrdersWithCheerio(searchedUsername);
+        const isLocalHost = TARGET_BASE_URL.includes('localhost') || TARGET_BASE_URL.includes('127.0.0.1');
+        let remoteOrders = null;
 
-        // Tier 2: Try Live Scraping with Puppeteer Headless Browser if Cheerio needs login
-        if (remoteOrders === null) {
+        // On live site (thewestern.rdcw.xyz is a Next.js client-side SPA), Puppeteer runs JavaScript and extracts live DOM
+        if (!isLocalHost) {
             remoteOrders = await scrapeLiveOrdersWithPuppeteer(searchedUsername);
+            if (!remoteOrders || remoteOrders.length === 0) {
+                remoteOrders = await scrapeLiveOrdersWithCheerio(searchedUsername);
+            }
+        } else {
+            remoteOrders = await scrapeLiveOrdersWithCheerio(searchedUsername);
+            if (!remoteOrders || remoteOrders.length === 0) {
+                remoteOrders = await scrapeLiveOrdersWithPuppeteer(searchedUsername);
+            }
         }
 
         // Tier 3: Fallback to internal target API if HTML scraping failed
-        if (remoteOrders === null) {
-            const isLocalHost = TARGET_BASE_URL.includes('localhost') || TARGET_BASE_URL.includes('127.0.0.1');
+        if (!remoteOrders || remoteOrders.length === 0) {
             const ordersEndpoint = isLocalHost
                 ? `${TARGET_BASE_URL}/api/target-mock/orders?username=${encodeURIComponent(searchedUsername)}`
                 : `${TARGET_BASE_URL}/api/orders?username=${encodeURIComponent(searchedUsername)}`;
@@ -2596,6 +2496,43 @@ async function fetchTargetOrdersForUser(searchedUsername) {
                 });
             });
 
+            // Mirror fresh orders to Firestore
+            if (firestoreDb) {
+                const batch = firestoreDb.batch();
+                let activeOrderIdx = 0;
+                remoteOrders.forEach(remoteOrder => {
+                    const resolved = resolveAppProductDetails(remoteOrder.product_name, remoteOrder.product_image);
+                    const isTerminal = ['Completed', 'Failed', 'Cancelled', 'Refunded'].includes(remoteOrder.queue_status);
+                    let qPos = 0;
+                    if (!isTerminal) {
+                        activeOrderIdx++;
+                        qPos = activeOrderIdx;
+                    }
+                    const waitMin = qPos * 2;
+                    const pTimeDate = new Date(remoteOrder.purchase_time || now);
+                    const waitTimeTgt = isTerminal ? null : new Date(pTimeDate.getTime() + waitMin * 60 * 1000).toISOString();
+                    const rawKey = remoteOrder.order_id || `${searchedUsername}_${remoteOrder.product_name}_${remoteOrder.purchase_time}`;
+                    const docId = rawKey.replace(/[^a-zA-Z0-9_-]/g, '_');
+                    const ref = firestoreDb.collection('orders').doc(docId);
+                    batch.set(ref, {
+                        order_id: docId,
+                        username: remoteOrder.username || searchedUsername,
+                        product_name: remoteOrder.product_name || resolved.product_name,
+                        product_image: resolved.product_image || null,
+                        queue_position: qPos,
+                        queue_status: remoteOrder.queue_status,
+                        estimated_wait_time: isTerminal ? 'จัดส่งสำเร็จแล้ว' : `ประมาณ ${waitMin} นาที`,
+                        notes: remoteOrder.notes || 'ดึงและซิงค์ข้อมูลจากเว็บต้นทางเรียบร้อยแล้ว',
+                        buyer_notes: remoteOrder.buyer_notes || '',
+                        purchase_time: remoteOrder.purchase_time || now,
+                        wait_time_target: waitTimeTgt,
+                        last_updated: now,
+                        source: 'thewestern.rdcw.xyz'
+                    }, { merge: true });
+                });
+                batch.commit().catch(e => logger.warn(`[Firestore User Sync] ${e.message}`));
+            }
+
             broadcastLog(searchedUsername, 'success', `[Bot Scraper] สแกนพบพรีออเดอร์ของ "${searchedUsername}" ทั้งหมด ${remoteOrders.length} รายการจากเว็บต้นทาง!`);
             broadcastUpdate('orders');
             return { success: true, count: remoteOrders.length };
@@ -2619,17 +2556,24 @@ async function mirrorAllOrdersToFirestore() {
     }
     logger.info('[Background Scraper] Scanning ALL customer orders from target site to Firebase & Database...');
 
-    // Tier 1: Try Cheerio HTML Scraper (Fetches all orders)
-    let remoteOrders = await scrapeLiveOrdersWithCheerio('');
+    const isLocalHost = TARGET_BASE_URL.includes('localhost') || TARGET_BASE_URL.includes('127.0.0.1');
+    let remoteOrders = null;
 
-    // Tier 2: Try Puppeteer Scraper
-    if (remoteOrders === null) {
+    if (!isLocalHost) {
+        // Puppeteer executes client-rendered React SPA to get live table rows
         remoteOrders = await scrapeLiveOrdersWithPuppeteer('');
+        if (!remoteOrders || remoteOrders.length === 0) {
+            remoteOrders = await scrapeLiveOrdersWithCheerio('');
+        }
+    } else {
+        remoteOrders = await scrapeLiveOrdersWithCheerio('');
+        if (!remoteOrders || remoteOrders.length === 0) {
+            remoteOrders = await scrapeLiveOrdersWithPuppeteer('');
+        }
     }
 
     // Tier 3: Fallback to Mock or Direct API
-    if (remoteOrders === null) {
-        const isLocalHost = TARGET_BASE_URL.includes('localhost') || TARGET_BASE_URL.includes('127.0.0.1');
+    if (!remoteOrders || remoteOrders.length === 0) {
         const ordersEndpoint = isLocalHost
             ? `${TARGET_BASE_URL}/api/target-mock/orders`
             : `${TARGET_BASE_URL}/api/orders`;
@@ -2778,7 +2722,7 @@ async function mirrorAllOrdersToFirestore() {
     if (batchCount > 0) {
         await batch.commit();
         logger.info(`[Background Scraper] Mirrored ${batchCount} orders and ${Object.keys(ordersByUser).length} accounts (New: ${newUsersCount}) into Firestore & SQLite!`);
-        broadcastLog('System', 'success', `[Auto Discovery] ดึง 50 รายการล่าสุดจากเว็บต้นทางสำเร็จ! พบบัญชีผู้ใช้ทั้งหมด ${Object.keys(ordersByUser).length} บัญชี (เป็นผู้ใช้ใหม่ ${newUsersCount} บัญชี) บันทึกลง database และ Firebase เรียบร้อยแล้ว`);
+        broadcastLog('System', 'success', `[Auto Discovery] ดึง 10 รายการล่าสุดจากเว็บต้นทางสำเร็จ! พบบัญชีผู้ใช้ทั้งหมด ${Object.keys(ordersByUser).length} บัญชี (เป็นผู้ใช้ใหม่ ${newUsersCount} บัญชี) บันทึกลง database และ Firebase เรียบร้อยแล้ว`);
         broadcastUpdate('orders');
     }
 }
@@ -2791,17 +2735,24 @@ async function mirrorUserOrdersToFirestore(username) {
     const cleanUsername = username.trim();
     logger.info(`[Background Scraper] Mirroring orders for user "${cleanUsername}" to Firestore...`);
 
-    // Tier 1: Try Cheerio HTML Scraper
-    let remoteOrders = await scrapeLiveOrdersWithCheerio(cleanUsername);
+    const isLocalHost = TARGET_BASE_URL.includes('localhost') || TARGET_BASE_URL.includes('127.0.0.1');
+    let remoteOrders = null;
 
-    // Tier 2: Try Puppeteer Scraper
-    if (remoteOrders === null) {
+    if (!isLocalHost) {
+        // Puppeteer executes client-rendered React SPA to get live table rows
         remoteOrders = await scrapeLiveOrdersWithPuppeteer(cleanUsername);
+        if (!remoteOrders || remoteOrders.length === 0) {
+            remoteOrders = await scrapeLiveOrdersWithCheerio(cleanUsername);
+        }
+    } else {
+        remoteOrders = await scrapeLiveOrdersWithCheerio(cleanUsername);
+        if (!remoteOrders || remoteOrders.length === 0) {
+            remoteOrders = await scrapeLiveOrdersWithPuppeteer(cleanUsername);
+        }
     }
 
     // Tier 3: Fallback to Mock or Direct API
-    if (remoteOrders === null) {
-        const isLocalHost = TARGET_BASE_URL.includes('localhost') || TARGET_BASE_URL.includes('127.0.0.1');
+    if (!remoteOrders || remoteOrders.length === 0) {
         const ordersEndpoint = isLocalHost
             ? `${TARGET_BASE_URL}/api/target-mock/orders?username=${encodeURIComponent(cleanUsername)}`
             : `${TARGET_BASE_URL}/api/orders?username=${encodeURIComponent(cleanUsername)}`;
@@ -2978,18 +2929,18 @@ app.get('/api/admin/system-stats', (req, res) => {
 // Retrocompatible Frontend Endpoints & Socket Logs
 // ==========================================
 
-// Helper to filter public orders (keep all pending/processing, and include up to 50 latest completed/finished orders)
+// Helper to filter public orders (keep all pending/processing, and include up to 10 latest completed/finished orders)
 function filterPublicOrders(orders) {
     if (!orders || !Array.isArray(orders)) return [];
     
     // 1. Keep all active orders (Pending and Processing)
     const activeOrders = orders.filter(order => ['Pending', 'Processing'].includes(order.queue_status));
     
-    // 2. Also include up to 50 latest completed/terminal orders (sorted newest first)
+    // 2. Also include up to 10 latest completed/terminal orders (sorted newest first)
     const completedOrders = orders
         .filter(order => !['Pending', 'Processing'].includes(order.queue_status))
         .sort((a, b) => new Date(b.purchase_time || b.last_updated || 0) - new Date(a.purchase_time || a.last_updated || 0))
-        .slice(0, 50);
+        .slice(0, 10);
 
     return [...activeOrders, ...completedOrders];
 }
