@@ -2160,9 +2160,7 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                 }
             }
 
-            const initialTargetOrdersUrl = searchedUsername && searchedUsername.trim()
-                ? `${TARGET_BASE_URL}/manager/orders?page=1&ps=50&q=${encodeURIComponent(searchedUsername)}`
-                : `${TARGET_BASE_URL}/manager/orders?page=1&ps=50`;
+            const initialTargetOrdersUrl = `${TARGET_BASE_URL}/manager/orders?ps=50`;
             logger.info(`[Puppeteer Live] Navigating directly to orders URL: ${initialTargetOrdersUrl}`);
             
             await page.goto(initialTargetOrdersUrl, { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {});
@@ -2222,23 +2220,57 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                     const fullText = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
                     if (!fullText) return;
 
-                    // A. Extract Table Columns directly if tr
+                    // A. Extract structured elements directly (cards and table rows)
                     const tds = el.querySelectorAll('td');
                     let parsedUser = '';
                     let parsedProduct = '';
+                    let parsedProductImage = '';
                     let parsedDate = '';
                     let parsedNotes = '-';
                     let parsedStatus = isForceCompleted ? 'Completed' : 'Processing';
 
+                    // 1. Username: exact extraction from h1 element
+                    const userH1 = el.querySelector('h1') || el.querySelector('.font-medium');
+                    if (userH1 && userH1.textContent.trim().length <= 30 && !userH1.textContent.includes('พรีออเดอร์')) {
+                        parsedUser = userH1.textContent.trim();
+                    }
+
+                    // 2. Product Name & Image
+                    const prodEl = el.querySelector('p.line-clamp-2') || el.querySelector('a[href*="/manager/orders/"]');
+                    if (prodEl) {
+                        parsedProduct = prodEl.textContent.trim();
+                    }
+                    const imgEl = el.querySelector('img');
+                    if (imgEl && imgEl.src) {
+                        parsedProductImage = imgEl.src;
+                    }
+
+                    // 3. Status from title attribute or badge text
+                    const statusBadge = el.querySelector('[title]');
+                    if (statusBadge) {
+                        const t = statusBadge.getAttribute('title').toUpperCase();
+                        if (t.includes('PENDING')) parsedStatus = 'Pending';
+                        else if (t.includes('PROCESSING')) parsedStatus = 'Processing';
+                        else if (t.includes('COMPLETED')) parsedStatus = 'Completed';
+                        else if (t.includes('CANCEL')) parsedStatus = 'Cancelled';
+                        else if (t.includes('REFUND')) parsedStatus = 'Refunded';
+                    }
+
+                    // 4. Notes
+                    const noteEl = el.querySelector('.wrap-anywhere span');
+                    if (noteEl) {
+                        parsedNotes = noteEl.textContent.trim() || '-';
+                    }
+
+                    // 5. Multi-column table fallback if tds length >= 3
                     if (tds.length >= 3) {
-                        // Col 1: Checkbox, Col 2: Product, Col 3: User, Col 4: Status, Col 5: Note, Col 6: Created At
-                        if (tds[1]) parsedProduct = tds[1].textContent.replace(/\s+/g, ' ').trim();
-                        if (tds[2]) {
+                        if (!parsedProduct && tds[1]) parsedProduct = tds[1].textContent.replace(/\s+/g, ' ').trim();
+                        if (!parsedUser && tds[2]) {
                             const uText = tds[2].textContent.replace(/\s+/g, ' ').trim();
                             const parts = uText.split(/\s+/);
                             parsedUser = parts.length > 1 && parts[0].length === 1 ? parts.slice(1).join(' ').trim() : uText;
                         }
-                        if (tds[3]) {
+                        if (tds[3] && !statusBadge) {
                             const stText = tds[3].textContent;
                             if (stText.includes('รอดำเนินการ') || stText.includes('Pending')) parsedStatus = 'Pending';
                             else if (stText.includes('กำลังดำเนินการ') || stText.includes('Processing')) parsedStatus = 'Processing';
@@ -2246,27 +2278,14 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                             else if (stText.includes('ยกเลิก') || stText.includes('Cancelled')) parsedStatus = 'Cancelled';
                             else if (stText.includes('คืนเงิน') || stText.includes('Refunded')) parsedStatus = 'Refunded';
                         }
-                        if (tds[4]) parsedNotes = tds[4].textContent.trim() || '-';
-                        if (tds[5]) parsedDate = tds[5].textContent.trim();
+                        if (parsedNotes === '-' && tds[4]) parsedNotes = tds[4].textContent.trim() || '-';
+                        if (!parsedDate && tds[5]) parsedDate = tds[5].textContent.trim();
                     }
 
-                    // B. Fallback Card / Div extraction
+                    // Fallback username parsing if still empty
                     if (!parsedUser) {
-                        if (userFilter && fullText.toLowerCase().includes(userFilter.toLowerCase())) {
-                            parsedUser = userFilter;
-                        } else {
-                            const userEl = el.querySelector('h1, h2, h3, .font-semibold, .font-medium');
-                            if (userEl && userEl.textContent.trim().length <= 30) {
-                                parsedUser = userEl.textContent.trim();
-                            } else {
-                                const match = fullText.match(/\b([a-zA-Z0-9_.@-]{3,25})\b/);
-                                if (match) parsedUser = match[1];
-                            }
-                        }
-                        if (parsedUser) {
-                            const parts = parsedUser.split(/\s+/);
-                            if (parts.length > 1 && parts[0].length === 1) parsedUser = parts.slice(1).join(' ').trim();
-                        }
+                        const match = fullText.match(/\b([a-zA-Z0-9_.@-]{3,25})\b/);
+                        if (match) parsedUser = match[1];
                     }
 
                     // Skip row if searched user is specified and doesn't match
@@ -2338,6 +2357,7 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                         results.push({
                             order_id: orderId,
                             product_name: parsedProduct,
+                            product_image: parsedProductImage || null,
                             queue_status: parsedStatus,
                             notes: parsedNotes,
                             buyer_notes: parsedProduct,
@@ -2356,7 +2376,7 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
             logger.info(`[Puppeteer Live] Extracting active preorder items from current view...`);
             await page.waitForSelector('table tbody tr, .order-card, div', { timeout: 10000 }).catch(() => {});
             
-            const activePageOrders = await page.evaluate(domExtractorFunction, searchedUsername, false);
+            const activePageOrders = await page.evaluate(domExtractorFunction, null, false);
             if (Array.isArray(activePageOrders)) {
                 activePageOrders.forEach(o => {
                     const key = o.order_id || `${o.product_name}|${o.username}|${o.raw_created_at}`;
@@ -2389,7 +2409,7 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                     logger.info(`[Puppeteer Live] Checkbox clicked. Waiting for 50 completed orders to render...`);
                     await new Promise(resolve => setTimeout(resolve, 3000));
 
-                    const completedOrders = await page.evaluate(domExtractorFunction, searchedUsername, true);
+                    const completedOrders = await page.evaluate(domExtractorFunction, null, true);
                     if (Array.isArray(completedOrders) && completedOrders.length > 0) {
                         logger.info(`[Puppeteer Live] Scraped ${completedOrders.length} completed orders.`);
                         completedOrders.slice(0, 50).forEach(o => {
@@ -2439,7 +2459,7 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
 
         if (Array.isArray(allScrapedOrders) && allScrapedOrders.length > 0) {
             let activeCounter = 0;
-            const finalOrders = allScrapedOrders.map((order) => {
+            let finalOrders = allScrapedOrders.map((order) => {
                 const purchaseTime = parseThaiDate(order.raw_created_at);
                 const isTerminal = ['Completed', 'Failed', 'Cancelled', 'Refunded'].includes(order.queue_status);
                 let queuePos = 0;
@@ -2463,7 +2483,17 @@ async function scrapeLiveOrdersWithPuppeteer(searchedUsername) {
                     wait_time_target: waitTimeTarget
                 };
             });
-            broadcastLog(searchedUsername, 'success', `[Puppeteer Live] สแกนสำเร็จ! พบบอกรายการของ "${searchedUsername}" ทั้งหมด ${finalOrders.length} รายการ (รวมรายการรอดำเนินการและ 50 รายการเสร็จสิ้น)`);
+
+            // If a specific username was requested, filter for that user; otherwise return all
+            if (searchedUsername && searchedUsername.trim()) {
+                const sLower = searchedUsername.toLowerCase().trim();
+                finalOrders = finalOrders.filter(o => 
+                    (o.username && o.username.toLowerCase().includes(sLower)) ||
+                    (o.buyer_notes && o.buyer_notes.toLowerCase().includes(sLower))
+                );
+            }
+
+            broadcastLog(searchedUsername, 'success', `[Puppeteer Live] สแกนสำเร็จ! พบบอกรายการของ "${searchedUsername || 'ทุกผู้ใช้'}" ทั้งหมด ${finalOrders.length} รายการ (รวมรายการรอดำเนินการและ 50 รายการเสร็จสิ้น)`);
             return finalOrders;
         }
     } catch (puppeteerErr) {
